@@ -74,7 +74,7 @@ def analyze_pair(symbol: str, interval: str):
     karar = "AL" if sinyaller.count("AL") >= 2 else "SAT" if sinyaller.count("SAT") >= 2 else "BEKLE"
 
     mesaj = f"{symbol.upper()} / {interval} analizi\n" + "\n".join(sinyaller) + f"\nSonuç: {karar}"
-    return mesaj 
+    return mesaj
 
 # /start komutu
 def start(update, context):
