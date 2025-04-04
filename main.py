@@ -2,6 +2,13 @@ import os
 import requests
 from telegram import Bot
 from telegram.ext import CommandHandler, Updater
+from flask import Flask
+
+app = Flask(__name__)  # bu Render için kandırma kodu
+
+@app.route('/')
+def home():
+    return "Bot çalışıyor!"
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
