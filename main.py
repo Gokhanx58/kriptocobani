@@ -1,4 +1,12 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()  # .env dosyasını oku
+
+TOKEN = os.getenv("TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+
+import os
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
