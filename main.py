@@ -32,6 +32,7 @@ def fetch_ohlcv(symbol: str, interval: str, limit: int = 100):
     data = response.json()
     df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])
     df["close"] = pd.to_numeric(df["close"])
+    print(f"Veri Çekildi: {df.head()}")  # Veriyi kontrol etmek için print ekledik
     return df
 
 # Analiz fonksiyonu (RSI, MACD, EMA analizlerini yapar)
@@ -75,6 +76,7 @@ def analyze_pair(symbol: str, interval: str):
     karar = "AL" if sinyaller.count("AL") >= 2 else "SAT" if sinyaller.count("SAT") >= 2 else "BEKLE"
 
     mesaj = f"{symbol.upper()} / {interval} analizi\n" + "\n".join(sinyaller) + f"\nSonuç: {karar}"
+    print(f"Analiz Sonucu: {mesaj}")  # Analiz sonucunu görmek için print ekledik
     return mesaj 
 
 # /start komutu
