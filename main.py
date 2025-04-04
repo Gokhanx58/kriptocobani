@@ -1,3 +1,4 @@
+from telegram.ext import Updater
 import os
 from dotenv import load_dotenv
 load_dotenv()
