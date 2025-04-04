@@ -1,21 +1,12 @@
 import os
-import threading
 import requests
 import pandas as pd
 import numpy as np
-from flask import Flask
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 import ta
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
+TOKEN = os.environ.get("TELEGRAM_TOKEN")
 
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return "Bot çalışıyor!"
-
-# Binance Kline verisi çek
 def get_klines(symbol="BTCUSDT", interval="1m", limit=100):
     url = f"https://api.binance.com/api/v3/klines?symbol={symbol.upper()}&interval={interval}&limit={limit}"
     response = requests.get(url)
@@ -29,7 +20,6 @@ def get_klines(symbol="BTCUSDT", interval="1m", limit=100):
     df["open"] = df["open"].astype(float)
     return df
 
-# Supertrend hesapla
 def calculate_supertrend(df, period=14, multiplier=3):
     atr = ta.volatility.average_true_range(df["high"], df["low"], df["close"], window=period)
     hl2 = (df["high"] + df["low"]) / 2
@@ -45,7 +35,6 @@ def calculate_supertrend(df, period=14, multiplier=3):
             supertrend.append(supertrend[-1])
     return supertrend
 
-# Teknik analiz fonksiyonu
 def analyze(symbol="BTCUSDT", interval="1m"):
     df = get_klines(symbol, interval)
     df["rsi"] = ta.momentum.rsi(df["close"], window=14)
@@ -61,7 +50,6 @@ def analyze(symbol="BTCUSDT", interval="1m"):
 
     rsi = round(latest["rsi"], 2)
     comment.append(f"RSI: {rsi} {'(Aşırı alım)' if rsi > 70 else '(Aşırı satım)' if rsi < 30 else ''}")
-
     comment.append(f"MACD: {'Al sinyali' if latest['macd_diff'] > 0 else 'Sat sinyali'}")
     comment.append(f"EMA(20/50): {'Pozitif' if latest['ema20'] > latest['ema50'] else 'Negatif'}")
     comment.append(f"Supertrend: {'Long (Al)' if latest['supertrend'] else 'Short (Sat)'}")
@@ -82,7 +70,6 @@ def analyze(symbol="BTCUSDT", interval="1m"):
 
     return "\n".join(comment) + f"\n\n{yorum}"
 
-# Komutları işle
 def handle_message(update, context):
     text = update.message.text.lower().strip()
     parts = text.split()
@@ -117,11 +104,16 @@ def handle_message(update, context):
         else:
             update.message.reply_text("❌ Geçersiz komut. Örnek: btcusdt 15")
     elif text == "/start":
-        update.message.reply_text("📊 Teknik analiz botu aktif!\nÖrnek kullanım:\n`btcusdt 15`\n`ethusdt 4h`\n`btcusdt x` ile tüm zamanlarda analiz alabilirsin.", parse_mode="HTML")
+        update.message.reply_text(
+            "📊 Teknik analiz botu aktif!\n\nÖrnek komutlar:\n"
+            "`btcusdt 1` → 1 dakikalık analiz\n"
+            "`ethusdt 4h` → 4 saatlik analiz\n"
+            "`dogeusdt x` → tüm zamanlar",
+            parse_mode="HTML"
+        )
     else:
         update.message.reply_text("❌ Geçersiz mesaj.")
 
-# Botu çalıştır
 def run_bot():
     updater = Updater(token=TOKEN, use_context=True)
     dp = updater.dispatcher
@@ -130,8 +122,5 @@ def run_bot():
     updater.start_polling()
     updater.idle()
 
-if __name__ == '__main__':
-    threading.Thread(target=run_bot).start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
 if __name__ == '__main__':
     run_bot()
