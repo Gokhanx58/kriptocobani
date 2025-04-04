@@ -35,18 +35,20 @@ dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
 # Webhook endpoint
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
-    # Webhook'tan gelen veriyi al
     update = Update.de_json(request.get_json(force=True), bot)
-    # Veriyi işleme
     dispatcher.process_update(update)
     return "ok"
 
 # Webhook ayarı
 @app.route("/set_webhook", methods=["GET", "POST"])
 def set_webhook():
-    # Webhook'u ayarlıyoruz
     bot.set_webhook(url=f"{WEBHOOK_URL}/{TOKEN}")
     return "Webhook başarıyla ayarlandı."
+
+# Basit Ana Sayfa Yolu ("/" için)
+@app.route('/')
+def home():
+    return "Uygulama Çalışıyor!"
 
 # Uygulamayı başlat
 if __name__ == "__main__":
