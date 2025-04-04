@@ -1,7 +1,4 @@
-from telegram.ext import Updater
-import os
-from dotenv import load_dotenv
-load_dotenv()
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 
