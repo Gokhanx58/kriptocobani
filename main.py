@@ -119,5 +119,9 @@ def set_webhook():
     return "Webhook başarıyla ayarlandı."
 
 # Uygulamayı başlat
+@app.route('/')
+def home():
+    return "Bot aktif ve çalışıyor!"
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
