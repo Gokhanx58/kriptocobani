@@ -1,56 +1,46 @@
 import os
-import logging
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from telegram import ParseMode
-from analysis import analyze_pair
+from flask import Flask, request
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 from dotenv import load_dotenv
+from analysis import analyze_pair
 
 load_dotenv()
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
+TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
-logger = logging.getLogger(__name__)
+bot = Bot(token=TOKEN)
+app = Flask(__name__)
 
+dispatcher = Dispatcher(bot, None, use_context=True)
 
 def start(update, context):
-    update.message.reply_text("Merhaba! Teknik analiz için örnek komut: btcusdt 15")
-
-
-def help_command(update, context):
-    update.message.reply_text("Komut formatı: <sembol> <zaman>. Örn: btcusdt 15")
-
+    update.message.reply_text("Merhaba! Kripto sinyal botuna hoş geldin.")
 
 def handle_message(update, context):
     text = update.message.text.strip()
-    parts = text.lower().split()
+    if " " in text:
+        symbol, interval = text.split()
+        response = analyze_pair(symbol.lower(), interval)
+        update.message.reply_text(response)
+    else:
+        update.message.reply_text("Geçerli bir komut girin. Örn: btcusdt 15")
 
-    if len(parts) != 2:
-        update.message.reply_text("Geçersiz komut. Örn: btcusdt 15")
-        return
+dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-    symbol, interval = parts
+@app.route('/')
+def home():
+    return "Bot çalışıyor."
 
-    try:
-        result = analyze_pair(symbol.upper(), interval)
-        update.message.reply_text(result, parse_mode=ParseMode.HTML)
-    except Exception as e:
-        logger.error(f"Hata oluştu: {e}")
-        update.message.reply_text("Analiz sırasında hata oluştu. Lütfen tekrar deneyin.")
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot)
+    dispatcher.process_update(update)
+    return "OK"
 
-
-def run_bot():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
-
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help_command))
-    dp.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
-
-    updater.start_polling()
-    updater.idle()
-
-
-if __name__ == '__main__':
-    run_bot()
+if __name__ == "__main__":
+    bot.delete_webhook()
+    bot.set_webhook(url=f"{WEBHOOK_URL}/{TOKEN}")
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
