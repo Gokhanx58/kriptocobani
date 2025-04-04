@@ -6,7 +6,7 @@ import os
 
 # SABİT TOKEN VE WEBHOOK URL
 TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"
-WEBHOOK_URL = "https://kriptocobani.onrender.com"
+WEBHOOK_URL = "https://kriptocobani.onrender.com"  # Burada kendi webhook URL'nizi kullanın
 
 # Flask uygulaması
 app = Flask(__name__)
@@ -35,7 +35,9 @@ dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, echo))
 # Webhook endpoint
 @app.route(f"/{TOKEN}", methods=["POST"])
 def webhook():
+    # Webhook'tan gelen veriyi al
     update = Update.de_json(request.get_json(force=True), bot)
+    # Veriyi işleme
     dispatcher.process_update(update)
     return "ok"
 
