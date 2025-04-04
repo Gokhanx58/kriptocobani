@@ -27,6 +27,7 @@ def fetch_ohlcv(symbol: str, interval: str, limit: int = 100):
     url = f"https://api.coingecko.com/api/v3/coins/{symbol}/ohlc?vs_currency=usd&days=1&interval={interval}"
     response = requests.get(url)
     if response.status_code != 200:
+        print(f"Error fetching data: {response.status_code}, {response.text}")
         return None
     data = response.json()
     df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])
@@ -74,7 +75,7 @@ def analyze_pair(symbol: str, interval: str):
     karar = "AL" if sinyaller.count("AL") >= 2 else "SAT" if sinyaller.count("SAT") >= 2 else "BEKLE"
 
     mesaj = f"{symbol.upper()} / {interval} analizi\n" + "\n".join(sinyaller) + f"\nSonuç: {karar}"
-    return mesaj
+    return mesaj 
 
 # /start komutu
 def start(update, context):
