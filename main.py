@@ -42,9 +42,16 @@ def webhook():
 # Webhook ayarı
 @app.route("/", methods=["GET", "HEAD"])
 def index():
-    bot.set_webhook(f"{WEBHOOK_URL}/{TOKEN}")
+   bot.set_webhook(f"{WEBHOOK_URL}/{TOKEN}")
     return "Webhook başarıyla ayarlandı."
 
 # Uygulamayı başlat
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+import logging
+
+# Loglama yapılandırması
+logging.basicConfig(level=logging.INFO)
+
+# Botu oluşturduktan sonra loglamayı ekle
+logging.info("Bot başarıyla başlatıldı.")
