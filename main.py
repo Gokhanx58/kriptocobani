@@ -40,10 +40,11 @@ def webhook():
     return "ok"
 
 # Webhook ayarı
-@app.route("/", methods=["GET", "HEAD"])
-def index():
-   bot.set_webhook(f"{WEBHOOK_URL}/{TOKEN}")
+@app.route("/webhook", methods=["GET", "POST"])
+def set_webhook():
+    bot.set_webhook(url=f"{WEBHOOK_URL}/{TOKEN}")
     return "Webhook başarıyla ayarlandı."
+
 
 # Uygulamayı başlat
 if __name__ == "__main__":
