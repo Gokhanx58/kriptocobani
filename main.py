@@ -1,22 +1,15 @@
 import os
 from dotenv import load_dotenv
+from telegram import Bot, Update
+from telegram.ext import Updater, CommandHandler, CallbackContext
+from flask import Flask, request
+from apscheduler.schedulers.background import BackgroundScheduler
 
-load_dotenv()  # .env dosyasını oku
+load_dotenv()  # .env dosyasını yükle
 
 TOKEN = os.getenv("TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-import os
-from flask import Flask, request
-from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
-from dotenv import load_dotenv
-from analysis import analyze_pair
-
-load_dotenv()
-
-TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
