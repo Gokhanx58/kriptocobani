@@ -1,6 +1,5 @@
 import os
 import threading
-from telegram import Bot
 from telegram.ext import CommandHandler, Updater
 from flask import Flask
 
@@ -14,8 +13,7 @@ def run_telegram_bot():
     updater = Updater(token=TOKEN, use_context=True)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler("start", start))
-    updater.start_polling()
-    updater.idle()
+    updater.start_polling()  # idle kaldırıldı
 
 # Flask sahte sunucu (Render kandırmacası)
 app = Flask(__name__)
