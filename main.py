@@ -48,3 +48,9 @@ def set_webhook():
 # Uygulamayı başlat
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+# Webhook ayarı
+@app.route("/set_webhook", methods=["GET", "POST"])
+def set_webhook():
+    # Webhook'u ayarlıyoruz
+    bot.set_webhook(url=f"{WEBHOOK_URL}/{TOKEN}")
+    return "Webhook başarıyla ayarlandı."
