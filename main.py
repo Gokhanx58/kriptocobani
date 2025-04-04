@@ -1,11 +1,9 @@
 import os
-import requests
-import pandas as pd
-import numpy as np
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-import ta
+from dotenv import load_dotenv
+load_dotenv()
 
-TOKEN = os.environ.get("TELEGRAM_TOKEN")
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+
 
 def get_klines(symbol="BTCUSDT", interval="1m", limit=100):
     url = f"https://api.binance.com/api/v3/klines?symbol={symbol.upper()}&interval={interval}&limit={limit}"
