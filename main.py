@@ -1,47 +1,57 @@
 import os
-from dotenv import load_dotenv
-from telegram import Bot, Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
 from flask import Flask, request
-from apscheduler.schedulers.background import BackgroundScheduler
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
+from dotenv import load_dotenv
+from analysis import analyze_pair  # Coin analiz fonksiyonunu içeriyor
 
-load_dotenv()  # .env dosyasını yükle
+load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-
 
 bot = Bot(token=TOKEN)
 app = Flask(__name__)
 
 dispatcher = Dispatcher(bot, None, use_context=True)
 
+
+# Komut /start yazıldığında çalışan fonksiyon
 def start(update, context):
-    update.message.reply_text("Merhaba! Kripto sinyal botuna hoş geldin.")
+    update.message.reply_text("Merhaba! Coin analizi yapmak için örnek komut: btcusdt 15")
 
+
+# Mesajları analiz eden ana fonksiyon
 def handle_message(update, context):
-    text = update.message.text.strip()
-    if " " in text:
-        symbol, interval = text.split()
-        response = analyze_pair(symbol.lower(), interval)
-        update.message.reply_text(response)
-    else:
-        update.message.reply_text("Geçerli bir komut girin. Örn: btcusdt 15")
+    try:
+        message = update.message.text.lower()
+        if " " in message:
+            symbol, timeframe = message.split()
+            result = analyze_pair(symbol.upper(), timeframe)
+            update.message.reply_text(result)
+        else:
+            update.message.reply_text("Lütfen sembol ve zaman dilimi yazınız. Örnek: btcusdt 15")
+    except Exception as e:
+        update.message.reply_text(f"Hata: {str(e)}")
 
+
+# Handler'lar
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-@app.route('/')
-def home():
-    return "Bot çalışıyor."
 
-@app.route(f"/{TOKEN}", methods=["POST"])
+# Webhook isteğini yakalayan Flask route'u
+@app.route(f'/webhook', methods=['POST'])
 def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    dispatcher.process_update(update)
-    return "OK"
+    if request.method == "POST":
+        update = Update.de_json(request.get_json(force=True), bot)
+        dispatcher.process_update(update)
+        return 'OK'
 
+
+# Botu başlatan fonksiyon
 if __name__ == "__main__":
     bot.delete_webhook()
-    bot.set_webhook(url=f"{WEBHOOK_URL}/{TOKEN}")
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    bot.set_webhook(url=WEBHOOK_URL)
+    print(f"Webhook kuruldu: {WEBHOOK_URL}")
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
