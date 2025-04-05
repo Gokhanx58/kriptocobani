@@ -24,22 +24,38 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 # CoinGecko API'den veri çekme fonksiyonu
 def fetch_ohlcv(symbol: str, interval: str, limit: int = 100):
-    url = f"https://api.coingecko.com/api/v3/coins/{symbol}/ohlc?vs_currency=usd&days=1&interval={interval}"
+    # Geçerli interval değerlerini belirliyoruz
+    valid_intervals = {
+        '1': 'minute',
+        '5': '5m',
+        '15': '15m',
+        '30': '30m',
+        '60': '1h',
+        '240': '4h',
+        '1440': 'daily'
+    }
+
+    # Kullanıcının gönderdiği interval değerini doğru şekilde eşliyoruz
+    if interval not in valid_intervals:
+        return f"Geçersiz interval parametresi: {interval}. Geçerli değerler: 1, 5, 15, 30, 60, 240, 1440."
+
+    interval_value = valid_intervals[interval]
+    url = f"https://api.coingecko.com/api/v3/coins/{symbol}/ohlc?vs_currency=usd&days=1&interval={interval_value}"
     
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Eğer hata varsa burada raise edecek
-        print(f"API Yanıtı: {response.json()}")  # API'den gelen yanıtı görmek için yazdırıyoruz
+        response.raise_for_status()  # Hata varsa raise eder
+        print(f"API Yanıtı: {response.json()}")
         data = response.json()
         df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])
         df["close"] = pd.to_numeric(df["close"])
-        print(f"Veri Çekildi: {df.head()}")  # Çekilen veriyi kontrol et
+        print(f"Veri Çekildi: {df.head()}")
         return df
     except requests.exceptions.HTTPError as err:
         print(f"HTTP Hatası: {err}")
     except Exception as e:
         print(f"Veri Çekme Hatası: {e}")
-    return None 
+    return None
 
 # Analiz fonksiyonu (RSI, MACD, EMA analizlerini yapar)
 def analyze_pair(symbol: str, interval: str):
