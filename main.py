@@ -1,15 +1,14 @@
 import logging
-import os
-import requests
-import pandas as pd
-import ta
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
+import requests
+import pandas as pd
+import ta
 
-# Sabit Token ve Webhook URL
-TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"  # BotFather'dan aldığın token'ı buraya yaz
-WEBHOOK_URL = "https://yourdomain.com"  # Webhook URL'ni buraya ekle (Render URL veya domain)
+# SABİT TOKEN VE WEBHOOK URL
+TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"
+WEBHOOK_URL = "https://kriptocobani.onrender.com"  # Render URL'niz buraya gelmeli
 
 # Flask uygulaması
 app = Flask(__name__)
@@ -25,16 +24,21 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # CoinGecko API'den veri çekme fonksiyonu
 def fetch_ohlcv(symbol: str, interval: str, limit: int = 100):
     url = f"https://api.coingecko.com/api/v3/coins/{symbol}/ohlc?vs_currency=usd&days=1&interval={interval}"
+    
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Hata varsa burada yakalanacak
+        response.raise_for_status()  # Eğer hata varsa burada raise edecek
+        print(f"API Yanıtı: {response.json()}")  # API'den gelen yanıtı görmek için yazdırıyoruz
         data = response.json()
         df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])
         df["close"] = pd.to_numeric(df["close"])
+        print(f"Veri Çekildi: {df.head()}")  # Çekilen veriyi kontrol et
         return df
-    except requests.exceptions.RequestException as e:
-        logging.error(f"API Hatası: {e}")
-        return None
+    except requests.exceptions.HTTPError as err:
+        print(f"HTTP Hatası: {err}")
+    except Exception as e:
+        print(f"Veri Çekme Hatası: {e}")
+    return None
 
 # Analiz fonksiyonu (RSI, MACD, EMA analizlerini yapar)
 def analyze_pair(symbol: str, interval: str):
@@ -77,7 +81,8 @@ def analyze_pair(symbol: str, interval: str):
     karar = "AL" if sinyaller.count("AL") >= 2 else "SAT" if sinyaller.count("SAT") >= 2 else "BEKLE"
 
     mesaj = f"{symbol.upper()} / {interval} analizi\n" + "\n".join(sinyaller) + f"\nSonuç: {karar}"
-    return mesaj
+    print(f"Analiz Sonucu: {mesaj}")  # Analiz sonucunu görmek için print ekledik
+    return mesaj 
 
 # /start komutu
 def start(update, context):
@@ -122,5 +127,9 @@ def set_webhook():
     return "Webhook başarıyla ayarlandı."
 
 # Uygulamayı başlat
+@app.route('/')
+def home():
+    return "Bot aktif ve çalışıyor!"
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
+    app.run(host="0.0.0.0", port=10000)
