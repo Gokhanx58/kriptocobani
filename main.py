@@ -2,13 +2,14 @@ import logging
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
+import os
 import requests
 import pandas as pd
 import ta
 
 # SABİT TOKEN VE WEBHOOK URL
 TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"
-WEBHOOK_URL = "https://kriptocobani.onrender.com"  # Render URL'niz buraya gelmeli
+WEBHOOK_URL = "https://kriptocobani.onrender.com"
 
 # Flask uygulaması
 app = Flask(__name__)
@@ -38,7 +39,7 @@ def fetch_ohlcv(symbol: str, interval: str, limit: int = 100):
         print(f"HTTP Hatası: {err}")
     except Exception as e:
         print(f"Veri Çekme Hatası: {e}")
-    return None
+    return None 
 
 # Analiz fonksiyonu (RSI, MACD, EMA analizlerini yapar)
 def analyze_pair(symbol: str, interval: str):
