@@ -1,14 +1,15 @@
 import logging
-from flask import Flask, request
-from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
+import os
 import requests
 import pandas as pd
 import ta
+from flask import Flask, request
+from telegram import Bot, Update
+from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
 
-# SABİT TOKEN VE WEBHOOK URL
-TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"
-WEBHOOK_URL = "https://kriptocobani.onrender.com"
+# Sabit Token ve Webhook URL
+TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"  # BotFather'dan aldığın token'ı buraya yaz
+WEBHOOK_URL = "https://yourdomain.com"  # Webhook URL'ni buraya ekle (Render URL veya domain)
 
 # Flask uygulaması
 app = Flask(__name__)
@@ -24,68 +25,59 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 # CoinGecko API'den veri çekme fonksiyonu
 def fetch_ohlcv(symbol: str, interval: str, limit: int = 100):
     url = f"https://api.coingecko.com/api/v3/coins/{symbol}/ohlc?vs_currency=usd&days=1&interval={interval}"
-    
     try:
         response = requests.get(url)
-        response.raise_for_status()  # Eğer hata varsa burada raise edecek
-        print(f"API Yanıtı: {response.json()}")  # API'den gelen yanıtı görmek için yazdırıyoruz
+        response.raise_for_status()  # Hata varsa burada yakalanacak
         data = response.json()
         df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])
         df["close"] = pd.to_numeric(df["close"])
-        print(f"Veri Çekildi: {df.head()}")  # Çekilen veriyi kontrol et
         return df
-    except requests.exceptions.HTTPError as err:
-        print(f"HTTP Hatası: {err}")
-    except Exception as e:
-        print(f"Veri Çekme Hatası: {e}")
-    return None
+    except requests.exceptions.RequestException as e:
+        logging.error(f"API Hatası: {e}")
+        return None
 
 # Analiz fonksiyonu (RSI, MACD, EMA analizlerini yapar)
 def analyze_pair(symbol: str, interval: str):
     df = fetch_ohlcv(symbol, interval)
     if df is None or df.empty:
         return "Veri alınamadı veya geçersiz sembol/zaman dilimi."
-    
-    try:
-        # RSI
-        rsi = ta.momentum.RSIIndicator(close=df["close"], window=14).rsi().iloc[-1]
-        # MACD
-        macd = ta.trend.MACD(close=df["close"])
-        macd_diff = macd.macd_diff().iloc[-1]
-        # EMA
-        ema_short = ta.trend.EMAIndicator(close=df["close"], window=12).ema_indicator().iloc[-1]
-        ema_long = ta.trend.EMAIndicator(close=df["close"], window=26).ema_indicator().iloc[-1]
 
-        # Sinyal üretimi
-        sinyaller = []
-        if rsi < 30:
-            sinyaller.append("RSI: AL")
-        elif rsi > 70:
-            sinyaller.append("RSI: SAT")
-        else:
-            sinyaller.append("RSI: BEKLE")
+    # RSI
+    rsi = ta.momentum.RSIIndicator(close=df["close"], window=14).rsi().iloc[-1]
+    # MACD
+    macd = ta.trend.MACD(close=df["close"])
+    macd_diff = macd.macd_diff().iloc[-1]
+    # EMA
+    ema_short = ta.trend.EMAIndicator(close=df["close"], window=12).ema_indicator().iloc[-1]
+    ema_long = ta.trend.EMAIndicator(close=df["close"], window=26).ema_indicator().iloc[-1]
 
-        if macd_diff > 0:
-            sinyaller.append("MACD: AL")
-        elif macd_diff < 0:
-            sinyaller.append("MACD: SAT")
-        else:
-            sinyaller.append("MACD: BEKLE")
+    # Sinyal üretimi
+    sinyaller = []
+    if rsi < 30:
+        sinyaller.append("RSI: AL")
+    elif rsi > 70:
+        sinyaller.append("RSI: SAT")
+    else:
+        sinyaller.append("RSI: BEKLE")
 
-        if ema_short > ema_long:
-            sinyaller.append("EMA: AL")
-        elif ema_short < ema_long:
-            sinyaller.append("EMA: SAT")
-        else:
-            sinyaller.append("EMA: BEKLE")
+    if macd_diff > 0:
+        sinyaller.append("MACD: AL")
+    elif macd_diff < 0:
+        sinyaller.append("MACD: SAT")
+    else:
+        sinyaller.append("MACD: BEKLE")
 
-        karar = "AL" if sinyaller.count("AL") >= 2 else "SAT" if sinyaller.count("SAT") >= 2 else "BEKLE"
-        mesaj = f"{symbol.upper()} / {interval} analizi\n" + "\n".join(sinyaller) + f"\nSonuç: {karar}"
-        print(f"Analiz Sonucu: {mesaj}")  # Analiz sonucunu görmek için yazdırıyoruz
-        return mesaj
-    except Exception as e:
-        print(f"Analiz Hatası: {e}")
-    return "Analiz sırasında hata oluştu."
+    if ema_short > ema_long:
+        sinyaller.append("EMA: AL")
+    elif ema_short < ema_long:
+        sinyaller.append("EMA: SAT")
+    else:
+        sinyaller.append("EMA: BEKLE")
+
+    karar = "AL" if sinyaller.count("AL") >= 2 else "SAT" if sinyaller.count("SAT") >= 2 else "BEKLE"
+
+    mesaj = f"{symbol.upper()} / {interval} analizi\n" + "\n".join(sinyaller) + f"\nSonuç: {karar}"
+    return mesaj
 
 # /start komutu
 def start(update, context):
@@ -130,9 +122,5 @@ def set_webhook():
     return "Webhook başarıyla ayarlandı."
 
 # Uygulamayı başlat
-@app.route('/')
-def home():
-    return "Bot aktif ve çalışıyor!"
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
