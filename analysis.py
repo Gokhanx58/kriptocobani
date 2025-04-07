@@ -92,21 +92,21 @@ def start(update, context):
 def handle_commands(update, context):
     command = update.message.text.strip().lower()
 
-    # 'btcusdt' komutunu kontrol et
-    if command.startswith("btcusdt"):
+    # 'bitcoin' komutunu kontrol et
+    if command.startswith("bitcoin"):
         # Komutun iki kısmını ayır
         parts = command.split()
         
         if len(parts) == 2 and parts[1].isdigit():  # Eğer doğru formatta bir komut ise
             interval = parts[1]  # Zaman dilimini al
-            update.message.reply_text(f"Analiz yapılacak coin: BTC/USDT, Zaman dilimi: {interval} dakika.")
+            update.message.reply_text(f"Analiz yapılacak coin: Bitcoin, Zaman dilimi: {interval} dakika.")
             
             # CoinGecko API ile veri çekip, analizi yapalım
             analysis_result = analyze_pair("bitcoin", interval)  # Symbol "bitcoin" olarak güncellendi
             update.message.reply_text(analysis_result)  # Analiz sonucunu gönder
 
         else:
-            update.message.reply_text("Geçerli bir zaman dilimi girin. Örneğin: 'Btcusdt 5'.")
+            update.message.reply_text("Geçerli bir zaman dilimi girin. Örneğin: 'bitcoin 5'.")
 
 # Handler'lar
 dispatcher.add_handler(CommandHandler("start", start))
