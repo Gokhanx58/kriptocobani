@@ -11,7 +11,7 @@ bot = Bot(token=TOKEN)
 dispatcher = Dispatcher(bot, None, use_context=True)
 
 def start(update, context):
-    update.message.reply_text("Bot aktif! Komut: btcusdt 5")
+    update.message.reply_text("Bot aktif! Komut örneği: btcusdt 5")
 
 def handle_command(update, context):
     text = update.message.text.lower().strip()
