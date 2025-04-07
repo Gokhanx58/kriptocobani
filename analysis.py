@@ -85,3 +85,8 @@ def analyze_pair(symbol: str, interval: str):
 
     mesaj = f"{symbol.upper()} / {interval}dk ANALİZ\n" + "\n".join(sinyaller) + f"\n🔔 Sonuç: {karar}"
     return mesaj
+    
+def handle_command(update, context):
+    text = update.message.text.lower().strip()
+    print(f"[DEBUG] Gelen Telegram mesajı: {text}")
+
