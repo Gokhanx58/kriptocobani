@@ -2,7 +2,6 @@ import logging
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
-import os
 import requests
 import pandas as pd
 import ta
@@ -10,6 +9,7 @@ import ta
 # SABİT TOKEN VE WEBHOOK URL
 TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"
 WEBHOOK_URL = "https://kriptocobani.onrender.com"
+API_KEY = "e711a4ec-145e-4215-8420-e3363f2c7a98"  # CoinMarketCap API Anahtarınız
 
 # Flask uygulaması
 app = Flask(__name__)
@@ -22,36 +22,35 @@ dispatcher = Dispatcher(bot, None, use_context=True)
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 
-# CoinGecko API'den veri çekme fonksiyonu
-def fetch_ohlcv(symbol: str, interval: str, limit: int = 100):
-    coin_ids = {
-        "btcusdt": "bitcoin",
-        "solusdt": "solana",
-        "ethusdt": "ethereum",
-        "suiusdt": "sui",
-        "avaxusdt": "avalanche"
+# CoinMarketCap API'den veri çekme fonksiyonu
+def fetch_coinmarketcap_data(symbol: str, interval: str):
+    url = "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest"
+    headers = {
+        'X-CMC_PRO_API_KEY': API_KEY,
+        'Accept': 'application/json',
+    }
+    params = {
+        'symbol': symbol.upper(),
+        'convert': 'USD',
+        'limit': 10,
     }
 
-    if symbol.lower() not in coin_ids:
-        return "Geçersiz sembol."
-
-    coin_id = coin_ids[symbol.lower()]
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days=1"
-    response = requests.get(url)
+    response = requests.get(url, headers=headers, params=params)
     
-    if response.status_code != 200:
-        print(f"Error fetching data: {response.status_code}, {response.text}")
+    if response.status_code == 200:
+        data = response.json()
+        df = pd.DataFrame(data['data'])
+        df['symbol'] = df['symbol'].apply(lambda x: x.upper())
+        df['price'] = pd.to_numeric(df['quote']['USD']['price'])
+        df['timestamp'] = pd.to_datetime(df['last_updated'])
+        return df
+    else:
+        print(f"Error fetching data from CoinMarketCap: {response.status_code}")
         return None
-
-    data = response.json()
-    df = pd.DataFrame(data['prices'], columns=["timestamp", "price"])
-    df["price"] = pd.to_numeric(df["price"])
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-    return df
 
 # Analiz fonksiyonu (RSI, MACD, EMA analizlerini yapar)
 def analyze_pair(symbol: str, interval: str):
-    df = fetch_ohlcv(symbol, interval)
+    df = fetch_coinmarketcap_data(symbol, interval)
     if df is None or df.empty:
         return "Veri alınamadı veya geçersiz sembol/zaman dilimi."
 
@@ -109,7 +108,7 @@ def handle_commands(update, context):
             interval = parts[1]  # Zaman dilimini al
             update.message.reply_text(f"Analiz yapılacak coin: {command.upper()}, Zaman dilimi: {interval} dakika.")
             
-            # CoinGecko API ile veri çekip, analizi yapalım
+            # CoinMarketCap API ile veri çekip, analizi yapalım
             analysis_result = analyze_pair(command, interval)
             update.message.reply_text(analysis_result)  # Analiz sonucunu gönder
 
