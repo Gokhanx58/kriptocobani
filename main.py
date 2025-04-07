@@ -11,11 +11,14 @@ bot = Bot(token=TOKEN)
 dispatcher = Dispatcher(bot, None, use_context=True)
 
 def start(update, context):
-    update.message.reply_text("Bot aktif! Komut örneği: btcusdt 5")
+    update.message.reply_text("Bot aktif! Örnek komut: btcusdt 5")
 
 def handle_command(update, context):
     text = update.message.text.lower().strip()
     parts = text.split()
+
+    print(f"[DEBUG] Gelen Telegram mesajı: {text}")
+    print(f"[DEBUG] Parçalanmış komut: {parts}")
 
     if len(parts) == 2 and parts[0] in ["btcusdt", "ethusdt", "solusdt", "avaxusdt", "suiusdt"] and parts[1].isdigit():
         symbol = parts[0]
@@ -27,8 +30,9 @@ def handle_command(update, context):
             update.message.reply_text(result)
         except Exception as e:
             update.message.reply_text(f"Analiz sırasında hata oluştu: {str(e)}")
+            print(f"[HATA] analyze_pair Hatası: {e}")
     else:
-        update.message.reply_text("Komut geçersiz. Örnek: btcusdt 5")
+        update.message.reply_text("Geçersiz komut. Örnek: btcusdt 5")
 
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_command))
