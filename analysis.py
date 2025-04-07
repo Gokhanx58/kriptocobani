@@ -2,6 +2,7 @@ import logging
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
+import os
 import requests
 import pandas as pd
 import ta
@@ -23,22 +24,30 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 # CoinGecko API'den veri çekme fonksiyonu
 def fetch_ohlcv(symbol: str, interval: str, limit: int = 100):
-    url = f"https://api.coingecko.com/api/v3/coins/{symbol}/ohlc?vs_currency=usd&days=1&interval={interval}"
+    coin_ids = {
+        "btcusdt": "bitcoin",
+        "solusdt": "solana",
+        "ethusdt": "ethereum",
+        "suiusdt": "sui",
+        "avaxusdt": "avalanche"
+    }
+
+    if symbol.lower() not in coin_ids:
+        return "Geçersiz sembol."
+
+    coin_id = coin_ids[symbol.lower()]
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart?vs_currency=usd&days=1"
+    response = requests.get(url)
     
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Eğer hata varsa burada raise edecek
-        print(f"API Yanıtı: {response.json()}")  # API'den gelen yanıtı görmek için yazdırıyoruz
-        data = response.json()
-        df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])
-        df["close"] = pd.to_numeric(df["close"])
-        print(f"Veri Çekildi: {df.head()}")  # Çekilen veriyi kontrol et
-        return df
-    except requests.exceptions.HTTPError as err:
-        print(f"HTTP Hatası: {err}")
-    except Exception as e:
-        print(f"Veri Çekme Hatası: {e}")
-    return None 
+    if response.status_code != 200:
+        print(f"Error fetching data: {response.status_code}, {response.text}")
+        return None
+
+    data = response.json()
+    df = pd.DataFrame(data['prices'], columns=["timestamp", "price"])
+    df["price"] = pd.to_numeric(df["price"])
+    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+    return df
 
 # Analiz fonksiyonu (RSI, MACD, EMA analizlerini yapar)
 def analyze_pair(symbol: str, interval: str):
@@ -47,13 +56,13 @@ def analyze_pair(symbol: str, interval: str):
         return "Veri alınamadı veya geçersiz sembol/zaman dilimi."
 
     # RSI
-    rsi = ta.momentum.RSIIndicator(close=df["close"], window=14).rsi().iloc[-1]
+    rsi = ta.momentum.RSIIndicator(close=df["price"], window=14).rsi().iloc[-1]
     # MACD
-    macd = ta.trend.MACD(close=df["close"])
+    macd = ta.trend.MACD(close=df["price"])
     macd_diff = macd.macd_diff().iloc[-1]
     # EMA
-    ema_short = ta.trend.EMAIndicator(close=df["close"], window=12).ema_indicator().iloc[-1]
-    ema_long = ta.trend.EMAIndicator(close=df["close"], window=26).ema_indicator().iloc[-1]
+    ema_short = ta.trend.EMAIndicator(close=df["price"], window=12).ema_indicator().iloc[-1]
+    ema_long = ta.trend.EMAIndicator(close=df["price"], window=26).ema_indicator().iloc[-1]
 
     # Sinyal üretimi
     sinyaller = []
@@ -81,7 +90,6 @@ def analyze_pair(symbol: str, interval: str):
     karar = "AL" if sinyaller.count("AL") >= 2 else "SAT" if sinyaller.count("SAT") >= 2 else "BEKLE"
 
     mesaj = f"{symbol.upper()} / {interval} analizi\n" + "\n".join(sinyaller) + f"\nSonuç: {karar}"
-    print(f"Analiz Sonucu: {mesaj}")  # Analiz sonucunu görmek için print ekledik
     return mesaj 
 
 # /start komutu
@@ -92,21 +100,21 @@ def start(update, context):
 def handle_commands(update, context):
     command = update.message.text.strip().lower()
 
-    # 'bitcoin' komutunu kontrol et
-    if command.startswith("bitcoin"):
+    # 'btcusdt' komutunu kontrol et
+    if command.startswith("btcusdt") or command.startswith("solusdt") or command.startswith("ethusdt") or command.startswith("suiusdt") or command.startswith("avaxusdt"):
         # Komutun iki kısmını ayır
         parts = command.split()
         
         if len(parts) == 2 and parts[1].isdigit():  # Eğer doğru formatta bir komut ise
             interval = parts[1]  # Zaman dilimini al
-            update.message.reply_text(f"Analiz yapılacak coin: Bitcoin, Zaman dilimi: {interval} dakika.")
+            update.message.reply_text(f"Analiz yapılacak coin: {command.upper()}, Zaman dilimi: {interval} dakika.")
             
             # CoinGecko API ile veri çekip, analizi yapalım
-            analysis_result = analyze_pair("bitcoin", interval)  # Symbol "bitcoin" olarak güncellendi
+            analysis_result = analyze_pair(command, interval)
             update.message.reply_text(analysis_result)  # Analiz sonucunu gönder
 
         else:
-            update.message.reply_text("Geçerli bir zaman dilimi girin. Örneğin: 'bitcoin 5'.")
+            update.message.reply_text("Geçerli bir zaman dilimi girin. Örneğin: 'Btcusdt 5'.")
 
 # Handler'lar
 dispatcher.add_handler(CommandHandler("start", start))
