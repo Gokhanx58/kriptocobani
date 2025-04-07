@@ -70,18 +70,4 @@ def analyze_pair(symbol: str, interval: str):
     ema12 = ta.trend.EMAIndicator(close=df["price"], window=12).ema_indicator().iloc[-1]
     ema26 = ta.trend.EMAIndicator(close=df["price"], window=26).ema_indicator().iloc[-1]
 
-    sinyaller = []
-    if rsi < 30:
-        sinyaller.append("RSI: AL")
-    elif rsi > 70:
-        sinyaller.append("RSI: SAT")
-    else:
-        sinyaller.append("RSI: BEKLE")
-
-    sinyaller.append("MACD: AL" if macd_diff > 0 else "MACD: SAT")
-    sinyaller.append("EMA: AL" if ema12 > ema26 else "EMA: SAT")
-
-    karar = "AL" if sinyaller.count("AL") >= 2 else "SAT" if sinyaller.count("SAT") >= 2 else "BEKLE"
-
-    mesaj = f"{symbol.upper()} / {interval}dk ANALİZ\n" + "\n".join(sinyaller) + f"\n🔔 Sonuç: {karar}"
-    return mesaj
+    sin
