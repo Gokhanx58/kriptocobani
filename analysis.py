@@ -2,7 +2,6 @@ import logging
 from flask import Flask, request
 from telegram import Bot, Update
 from telegram.ext import Dispatcher, CommandHandler, MessageHandler, Filters
-import os
 import requests
 import pandas as pd
 import ta
@@ -27,19 +26,19 @@ def fetch_ohlcv(symbol: str, interval: str, limit: int = 100):
     url = f"https://api.coingecko.com/api/v3/coins/{symbol}/ohlc?vs_currency=usd&days=1&interval={interval}"
     
     try:
-        response = requests.get(url)  # API'ye istek atıyoruz
+        response = requests.get(url)
         response.raise_for_status()  # Eğer hata varsa burada raise edecek
         print(f"API Yanıtı: {response.json()}")  # API'den gelen yanıtı görmek için yazdırıyoruz
-        data = response.json()  # JSON veriyi alıyoruz
-        df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])  # Veriyi pandas DataFrame'e çeviriyoruz
-        df["close"] = pd.to_numeric(df["close"])  # 'close' sütununu sayıya dönüştürüyoruz
-        print(f"Veri Çekildi: {df.head()}")  # Çekilen veriyi kontrol etmek için ilk 5 satırı yazdırıyoruz
+        data = response.json()
+        df = pd.DataFrame(data, columns=["timestamp", "open", "high", "low", "close"])
+        df["close"] = pd.to_numeric(df["close"])
+        print(f"Veri Çekildi: {df.head()}")  # Çekilen veriyi kontrol et
         return df
-    except requests.exceptions.HTTPError as err:  # HTTP hatası olursa
+    except requests.exceptions.HTTPError as err:
         print(f"HTTP Hatası: {err}")
-    except Exception as e:  # Diğer hatalar için
+    except Exception as e:
         print(f"Veri Çekme Hatası: {e}")
-    return None  # Eğer bir hata oluşursa None dönecek
+    return None 
 
 # Analiz fonksiyonu (RSI, MACD, EMA analizlerini yapar)
 def analyze_pair(symbol: str, interval: str):
@@ -103,7 +102,7 @@ def handle_commands(update, context):
             update.message.reply_text(f"Analiz yapılacak coin: BTC/USDT, Zaman dilimi: {interval} dakika.")
             
             # CoinGecko API ile veri çekip, analizi yapalım
-            analysis_result = analyze_pair("btcusdt", interval)
+            analysis_result = analyze_pair("bitcoin", interval)  # Symbol "bitcoin" olarak güncellendi
             update.message.reply_text(analysis_result)  # Analiz sonucunu gönder
 
         else:
