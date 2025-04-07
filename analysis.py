@@ -15,15 +15,31 @@ def fetch_data(symbol: str, interval: str):
     if not coin_id:
         return None
 
+    interval_map = {
+        "1": "minutely",
+        "5": "minutely",
+        "15": "minutely",
+        "30": "minutely",
+        "60": "hourly",
+        "1h": "hourly",
+        "4h": "hourly",
+        "1d": "daily"
+    }
+
+    cg_interval = interval_map.get(interval.lower())
+    if not cg_interval:
+        return None
+
     url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
     params = {
         "vs_currency": "usd",
         "days": "1",
-        "interval": "minutely" if interval == "1" else "hourly"
+        "interval": cg_interval
     }
 
     response = requests.get(url, params=params)
     if response.status_code != 200:
+        print(f"CoinGecko hata: {response.status_code} - {response.text}")
         return None
 
     prices = response.json().get("prices", [])
@@ -33,7 +49,6 @@ def fetch_data(symbol: str, interval: str):
     df = pd.DataFrame(prices, columns=["timestamp", "price"])
     df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
     df.set_index("timestamp", inplace=True)
-
     return df
 
 def analyze_pair(symbol: str, interval: str):
