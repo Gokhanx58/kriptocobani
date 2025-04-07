@@ -77,10 +77,3 @@ def analyze_pair(symbol: str, interval: str):
 
     mesaj = f"{symbol.upper()} / {interval}dk ANALİZ\n" + "\n".join(sinyaller) + f"\n🔔 Sonuç: {karar}"
     return mesaj
-
-def fetch_data(symbol: str, interval: str):
-    ...
-    print(f"İSTEK ATILIYOR → Coin: {coin_id}, Interval: {cg_interval}")
-    print(f"URL: {url}")
-    print(f"Params: {params}")
-    ...
