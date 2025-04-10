@@ -1,87 +1,38 @@
-import requests
-import pandas as pd
-import ta
+from tvDatafeed import TvDatafeed, Interval
 
-def fetch_data(symbol: str, interval: str):
-    gecko_map = {
-        "btcusdt": "bitcoin",
-        "ethusdt": "ethereum",
-        "solusdt": "solana",
-        "avaxusdt": "avalanche-2",
-        "suiusdt": "sui"
-    }
+# TradingView kullanıcı adı ve şifrenizi buraya ekleyin
+TV_USERNAME = 'marsticaret1'
+TV_PASSWORD = '8690Yn678690'
 
-    coin_id = gecko_map.get(symbol.lower())
-    if not coin_id:
-        print(f"[HATA] Coin eşleşmesi bulunamadı: {symbol}")
-        return None
+# TvDatafeed'e giriş yap
+tv = TvDatafeed(username=TV_USERNAME, password=TV_PASSWORD)
 
-    interval_map = {
-        "1": "minutely",
-        "5": "minutely",
-        "15": "minutely",
-        "30": "minutely",
-        "60": "hourly",
-        "1h": "hourly",
-        "4h": "hourly",
-        "1d": "daily"
-    }
+# Interval eşleştirmeleri
+INTERVAL_MAPPING = {
+    '1': Interval.in_1_minute,
+    '3': Interval.in_3_minute,
+    '5': Interval.in_5_minute,
+    '15': Interval.in_15_minute,
+    '30': Interval.in_30_minute,
+    '60': Interval.in_1_hour,
+    '120': Interval.in_2_hour,
+    '240': Interval.in_4_hour,
+    'D': Interval.in_daily,
+    'W': Interval.in_weekly,
+    'M': Interval.in_monthly
+}
 
-    cg_interval = interval_map.get(interval.lower())
-    if not cg_interval:
-        print(f"[HATA] Zaman dilimi eşleşmesi yok: {interval}")
-        return None
-
-    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
-    params = {
-        "vs_currency": "usd",
-        "days": "1",
-        "interval": cg_interval
-    }
-
-    print(f"[INFO] İstek atılıyor → {url}")
-    print(f"[INFO] Parametreler: {params}")
-
-    response = requests.get(url, params=params)
-
-    print(f"[INFO] Response status code: {response.status_code}")
-    if response.status_code != 200:
-        print(f"[HATA] CoinGecko response: {response.text}")
-        return None
-
-    prices = response.json().get("prices", [])
-    if not prices:
-        print(f"[HATA] Gelen veri boş")
-        return None
-
-    df = pd.DataFrame(prices, columns=["timestamp", "price"])
-    df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-    df.set_index("timestamp", inplace=True)
-    return df
-
-def analyze_pair(symbol: str, interval: str):
-    df = fetch_data(symbol, interval)
-    if df is None or df.empty:
-        return "Veri alınamadı veya geçersiz sembol/zaman dilimi."
-
-    rsi = ta.momentum.RSIIndicator(close=df["price"], window=14).rsi().iloc[-1]
-    macd = ta.trend.MACD(close=df["price"])
-    macd_diff = macd.macd_diff().iloc[-1]
-    ema12 = ta.trend.EMAIndicator(close=df["price"], window=12).ema_indicator().iloc[-1]
-    ema26 = ta.trend.EMAIndicator(close=df["price"], window=26).ema_indicator().iloc[-1]
-
-    sinyaller = []
-    if rsi < 30:
-        sinyaller.append("RSI: AL")
-    elif rsi > 70:
-        sinyaller.append("RSI: SAT")
+def analyze_symbol(symbol: str, interval: str) -> str:
+    if interval not in INTERVAL_MAPPING:
+        return 'Geçersiz zaman dilimi. Lütfen doğru bir zaman dilimi girin.'
+    data = tv.get_hist(symbol=symbol, exchange='MEXC', interval=INTERVAL_MAPPING[interval], n_bars=100)
+    if data is None or data.empty:
+        return f'{symbol} için veri alınamadı.'
+    # Burada RMI ve RSI Swing indikatörlerine göre analiz yapılacak
+    # Örnek olarak basit bir hareketli ortalama kontrolü yapalım
+    short_ma = data['close'].rolling(window=10).mean().iloc[-1]
+    long_ma = data['close'].rolling(window=50).mean().iloc[-1]
+    if short_ma > long_ma:
+        return f'{symbol} {interval} zaman diliminde AL sinyali veriyor.'
     else:
-        sinyaller.append("RSI: BEKLE")
-
-    sinyaller.append("MACD: AL" if macd_diff > 0 else "MACD: SAT")
-    sinyaller.append("EMA: AL" if ema12 > ema26 else "EMA: SAT")
-
-    karar = "AL" if sinyaller.count("AL") >= 2 else "SAT" if sinyaller.count("SAT") >= 2 else "BEKLE"
-
-    mesaj = f"{symbol.upper()} / {interval}dk ANALİZ\\n" + "\\n".join(sinyaller) + f"\\n🔔 Sonuç: {karar}"
-    return mesaj
+        return f'{symbol} {interval} zaman diliminde SAT sinyali veriyor.'
