@@ -1,17 +1,32 @@
+import os
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 from telegram import Update
-import os
+from flask import Flask, request
 
 TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"
+WEBHOOK_URL = "https://kriptocobani.onrender.com"
 
+app = Flask(__name__)
+
+# Mesaj geldiğinde verilecek cevap
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot çalışıyor! ✅")
+    await update.message.reply_text("✅ Bot çalışıyor!")
 
-application = ApplicationBuilder().token(TOKEN).build()
-application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+# Telegram bot uygulaması
+telegram_app = ApplicationBuilder().token(TOKEN).build()
+telegram_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-application.run_webhook(
-    listen="0.0.0.0",
-    port=int(os.environ.get("PORT", 10000)),
-    webhook_url="https://kriptocobani.onrender.com"
-)
+@app.route("/", methods=["POST"])
+def webhook():
+    # Gelen Telegram update'ini işle
+    telegram_app.update_queue.put_nowait(Update.de_json(request.get_json(force=True), telegram_app.bot))
+    return "ok"
+
+# Webhook set işlemi sadece bir kez yapılır
+@app.route("/set_webhook", methods=["GET"])
+def set_webhook():
+    telegram_app.bot.set_webhook(url=WEBHOOK_URL)
+    return "Webhook ayarlandı."
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
