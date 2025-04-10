@@ -11,7 +11,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Telegram bot token
-TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"
+TOKEN = "7713417143:AAGBOgQmxKTVetcbc_NGYuz_P6Kn9zTAO5g"
 
 # Desteklenen semboller ve borsa isimleri
 supported_symbols = {
