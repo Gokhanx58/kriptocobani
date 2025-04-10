@@ -1,4 +1,8 @@
-from bot import start_bot
+from bot import application
 
 if __name__ == "__main__":
-    start_bot()
+    application.run_webhook(
+        listen="0.0.0.0",
+        port=10000,
+        webhook_url="https://kriptocobani.onrender.com"
+    )
