@@ -5,7 +5,7 @@ import numpy as np
 
 tv = TvDatafeed()  # nologin yöntemi
 
-def analyze_signals(symbol, exchange, interval):
+def analyze_signals(symbol, exchange, timeframe, manual=True):
     try:
         df = tv.get_hist(symbol=symbol, exchange=exchange, interval=interval, n_bars=200)
         if df is None or df.empty:
