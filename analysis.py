@@ -5,7 +5,7 @@ TV_USERNAME = 'marsticaret1'
 TV_PASSWORD = '8690Yn678690'
 
 # TvDatafeed'e giriş yap
-tv = TvDatafeed(username=TV_USERNAME, password=TV_PASSWORD)
+tv = TvDatafeed(username='marsticaret1', password='8690Yn678690')
 
 # Interval eşleştirmeleri
 INTERVAL_MAPPING = {
