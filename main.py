@@ -14,6 +14,6 @@ app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 if __name__ == "__main__":
     app.run_webhook(
         listen="0.0.0.0",
-        port=10000,
+        port=int(os.environ.get("PORT", 10000)),
         webhook_url="https://kriptocobani.onrender.com"
     )
