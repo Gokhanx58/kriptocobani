@@ -1,5 +1,0 @@
-python-telegram-bot==20.3
-pandas==1.3.5
-numpy==1.21.6
-ta==0.10.2
-git+https://github.com/rongardF/tvdatafeed.git
