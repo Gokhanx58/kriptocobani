@@ -5,11 +5,10 @@ from telegram.ext import ContextTypes
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
-    print(f"Gelen mesaj: {text}")
-    await update.message.reply_text("Nötr")
+    print(f"Gelen mesaj: {text}")  # Bu log Render’da gözükmeli
+    await update.message.reply_text(f"Gelen mesaj: {text}")
 
 app = ApplicationBuilder().token("7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw").build()
-
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 if __name__ == "__main__":
