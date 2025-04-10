@@ -3,6 +3,13 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from analysis import analyze_rmi_rsi
 
+# 🔧 LOG AYARI — tüm bilgi ve hata mesajlarını detaylı gösterir
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
 # Telegram bot token
 TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"
 
@@ -34,6 +41,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         text = update.message.text.strip().upper()
+        logger.info(f"Kullanıcıdan gelen mesaj: {text}")
+
         parts = text.split()
 
         if len(parts) != 2:
@@ -55,23 +64,28 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         exchange = supported_symbols[symbol]
 
         await update.message.reply_text("📊 Analiz yapılıyor...")
+        logger.info(f"Analiz başlatıldı: {symbol}, {exchange}, {timeframe}")
 
         result = analyze_rmi_rsi(symbol=symbol, exchange=exchange, timeframe=timeframe)
         await update.message.reply_text(f"📈 {symbol} ({timeframe}): {result}")
 
     except Exception as e:
-        logging.error(f"Hata: {e}")
+        logger.exception(f"Beklenmeyen hata oluştu: {e}")
         await update.message.reply_text("⚠️ Beklenmeyen bir hata oluştu.")
 
 # Main bot çalıştırma fonksiyonu
 def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+    try:
+        logger.info("Bot başlatılıyor...")
+        app = ApplicationBuilder().token(TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    print("Bot polling ile çalışıyor...")
-    app.run_polling()
+        logger.info("Polling başlatılıyor...")
+        app.run_polling()
+    except Exception as e:
+        logger.exception(f"Bot çalıştırılamadı: {e}")
 
 if __name__ == "__main__":
     main()
