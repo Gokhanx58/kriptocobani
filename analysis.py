@@ -1,53 +1,40 @@
-from tvDatafeed import TvDatafeed, Interval
 import pandas as pd
-import numpy as np
+from tvDatafeed import TvDatafeed, Interval
+from ta.momentum import RSIIndicator
 
-tv = TvDatafeed(username='marsticaret1', password='8690Yn678690')
-
-def analyze_symbol(symbol, timeframe):
-    interval_map = {
-        '1': Interval.in_1_minute,
-        '5': Interval.in_5_minute,
-        '15': Interval.in_15_minute,
-        '30': Interval.in_30_minute,
-        '60': Interval.in_1_hour,
-        '240': Interval.in_4_hour,
+def get_interval_str(timeframe: str) -> Interval:
+    return {
+        '1m': Interval.in_1_minute,
+        '5m': Interval.in_5_minute,
+        '15m': Interval.in_15_minute,
+        '30m': Interval.in_30_minute,
+        '1h': Interval.in_1_hour,
+        '4h': Interval.in_4_hour,
         '1d': Interval.in_daily
-    }
+    }.get(timeframe, Interval.in_5_minute)
 
-    interval = interval_map.get(timeframe, Interval.in_15_minute)
-    data = tv.get_hist(symbol=symbol, exchange='BINANCE', interval=interval, n_bars=100)
+def analyze_rmi_rsi(symbol: str, exchange: str, timeframe: str = '5m') -> str:
+    tv = TvDatafeed()
+    interval = get_interval_str(timeframe)
+    df = tv.get_hist(symbol=symbol.upper(), exchange=exchange, interval=interval, n_bars=100)
 
-    if data is None or data.empty:
-        return f"{symbol} için veri alınamadı."
+    if df is None or df.empty:
+        return "Veri alınamadı."
 
-    data['rsi'] = compute_rsi(data['close'])
-    data['rmi'] = compute_rmi(data['close'])
+    # RSI Swing hesaplama
+    rsi = RSIIndicator(close=df['close'], window=14).rsi()
+    latest_rsi = rsi.iloc[-1]
 
-    latest_rsi = data['rsi'].iloc[-1]
-    latest_rmi = data['rmi'].iloc[-1]
+    # RMI hesaplama (RSI'ın hareketli versiyonu gibi düşün)
+    df['rmi'] = df['close'].diff(1).apply(lambda x: max(x, 0)).rolling(window=5).mean()
+    df['rmi'] -= df['close'].diff(1).apply(lambda x: abs(x)).rolling(window=5).mean()
+    df['rmi'] = df['rmi'].fillna(0)
+    latest_rmi = df['rmi'].iloc[-1]
 
-    if latest_rsi < 30 and latest_rmi > 50:
-        return f"{symbol} ({timeframe}) için ✅ **AL** sinyali"
-    elif latest_rsi > 70 and latest_rmi < 50:
-        return f"{symbol} ({timeframe}) için ❌ **SAT** sinyali"
+    if latest_rsi < 30 and latest_rmi > 0:
+        return "🔼 AL"
+    elif latest_rsi > 70 and latest_rmi < 0:
+        return "🔻 SAT"
     else:
-        return f"{symbol} ({timeframe}) için 📊 **NÖTR**"
+        return "⏳ BEKLE"
 
-def compute_rsi(series, period=14):
-    delta = series.diff()
-    gain = delta.where(delta > 0, 0)
-    loss = -delta.where(delta < 0, 0)
-    avg_gain = gain.rolling(period).mean()
-    avg_loss = loss.rolling(period).mean()
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
-
-def compute_rmi(series, length=20, momentum=5):
-    momentum_diff = series.diff(momentum)
-    up = momentum_diff.where(momentum_diff > 0, 0)
-    down = -momentum_diff.where(momentum_diff < 0, 0)
-    avg_up = up.rolling(length).mean()
-    avg_down = down.rolling(length).mean()
-    rmi = 100 - (100 / (1 + (avg_up / avg_down)))
-    return rmi
