@@ -14,6 +14,6 @@ if __name__ == '__main__':
     application.run_webhook(
         listen="0.0.0.0",
         port=int(os.environ.get("PORT", 10000)),
-        webhook_url="https://kriptocobani.onrender.com",  # dışarıdan gelenler için
-        webhook_path="/"  # Telegram buradan ulaşır
+        url_path="/",
+        webhook_url="https://kriptocobani.onrender.com/"
     )
