@@ -1,31 +1,27 @@
-import logging
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from analysis import analyze_symbol
 
-# Telegram bot tokenınızı buraya ekleyin
-TELEGRAM_BOT_TOKEN = '7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw'
+TOKEN = "7649989587:AAHUpzkXy3f6ZxoWmNTFUZxXF-XHuJ4DsUw"
 
-# Logging ayarları
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Hoş geldin! Sembol ve zaman dilimi girerek analiz alabilirsin.\nÖrnek: btcusdt 15")
 
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Hoş geldiniz! Lütfen analiz yapmak istediğiniz sembolü ve zaman dilimini girin.\nÖrnek: /analyze BTCUSDT 15')
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        text = update.message.text.lower()
+        parts = text.split()
+        if len(parts) == 2:
+            symbol, timeframe = parts
+            result = analyze_symbol(symbol.upper(), timeframe)
+            await update.message.reply_text(result)
+        else:
+            await update.message.reply_text("Hatalı komut. Örnek: btcusdt 15")
+    except Exception as e:
+        await update.message.reply_text(f"Hata oluştu: {str(e)}")
 
-def analyze(update: Update, context: CallbackContext) -> None:
-    if len(context.args) != 2:
-        update.message.reply_text('Lütfen sembol ve zaman dilimini doğru formatta girin.\nÖrnek: /analyze BTCUSDT 15')
-        return
-    symbol = context.args[0].upper()
-    interval = context.args[1]
-    result = analyze_symbol(symbol, interval)
-    update.message.reply_text(result)
-
-def start_bot() -> None:
-    updater = Updater(TELEGRAM_BOT_TOKEN)
-    dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("analyze", analyze))
-    updater.start_polling()
-    updater.idle()
+def start_bot():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.run_polling()
