@@ -18,5 +18,5 @@ async def start_signal_loop():
                 result = analyze_signals(symbol, interval, manual=False)
                 if result != "BEKLE":
                     await bot.send_message(chat_id=CHANNEL_ID, text=f"{symbol} - {interval}m sinyali: {result}")
-                await asyncio.sleep(3)
+                await asyncio.sleep(30)
         await asyncio.sleep(30)
