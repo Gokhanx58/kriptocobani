@@ -5,9 +5,7 @@ from handlers import analiz_komutu
 
 nest_asyncio.apply()
 
-TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
-
-app = ApplicationBuilder().token(TOKEN).build()
+app = ApplicationBuilder().token("8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs").build()
 
 # Komut handler'ı tanımlıyoruz
 handle_analiz = CommandHandler("analiz", analiz_komutu)
@@ -16,7 +14,7 @@ app.add_handler(handle_analiz)
 async def main():
     await app.initialize()
     await app.start()
-    print("Bot başlatıldı")
+    print("🚀 Bot aktif")
     await app.updater.start_polling()
     await app.updater.idle()
 
