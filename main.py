@@ -1,25 +1,20 @@
+# main.py
+
 import asyncio
-from telegram import Bot
 from telegram.ext import ApplicationBuilder, CommandHandler
 from handlers import handle_analiz
-from signal_loop import check_signals_loop
+from signal_loop import start_signal_loop
 
-TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
-CHANNEL_ID = "-1002556449131"
+BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
 
 async def main():
-    application = ApplicationBuilder().token(TOKEN).build()
-    application.add_handler(CommandHandler("analiz", handle_analiz))
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    bot = Bot(token=TOKEN)
-    
-    # Otomatik sinyal döngüsü
-    asyncio.create_task(check_signals_loop(bot, CHANNEL_ID))
-    
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling()
-    await application.updater.idle()
+    app.add_handler(CommandHandler("analiz", handle_analiz))
+
+    asyncio.create_task(start_signal_loop())  # Sinyal döngüsü paralel başlasın
+
+    await app.run_polling()
 
 if __name__ == "__main__":
     asyncio.run(main())
