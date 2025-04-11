@@ -2,41 +2,42 @@ import asyncio
 from datetime import datetime, timedelta
 from telegram import Bot
 from rsi_rmi_analyzer import analyze_signals
+from config import TELEGRAM_TOKEN, CHANNEL_ID
 
-TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
-CHANNEL_ID = "@GoKriptoLine"
-bot = Bot(token=TOKEN)
-
-# Gönderilen sinyalleri tutan yapı (3 dakika kontrolü)
+bot = Bot(token=TELEGRAM_TOKEN)
 sent_signals = {}
 
 async def start_signal_loop():
-    symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]
-    intervals = ["1", "5"]
+    symbols = ['BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'SOLUSDT', 'SUIUSDT']
+    intervals = ['1', '5']
 
     while True:
         for symbol in symbols:
             for interval in intervals:
-                try:
-                    result = analyze_signals(symbol, interval)
-                    if not result:
-                        continue
+                result = await analyze_signals(symbol, interval, manual=False)
 
-                    now = datetime.utcnow()
-                    key = f"{symbol}_{interval}_{result}"
+                if result is None:
+                    result = "BEKLE"
+                    message = f"{symbol} - {interval}m için analiz sonucu bulunamadı. {result}."
+                else:
+                    message = f"{symbol} - {interval}m sinyali: {result}"
 
-                    # Eğer aynı sinyal 3 dakika içinde gönderildiyse atla
-                    if key in sent_signals and now - sent_signals[key] < timedelta(minutes=3):
-                        continue
+                key = f"{symbol}_{interval}"
+                now = datetime.utcnow()
 
-                    message = f"{symbol} {interval}m sinyali: {result}"
+                # Sinyal değişimi veya 3 dakika kuralı
+                if key not in sent_signals:
+                    sent_signals[key] = {'signal': result, 'time': now}
                     await bot.send_message(chat_id=CHANNEL_ID, text=message)
 
-                    sent_signals[key] = now
+                elif result != sent_signals[key]['signal']:
+                    sent_signals[key] = {'signal': result, 'time': now}
+                    await bot.send_message(chat_id=CHANNEL_ID, text=message)
 
-                except Exception as e:
-                    print(f"Hata oluştu: {e}")
+                elif now - sent_signals[key]['time'] > timedelta(minutes=3):
+                    sent_signals[key]['time'] = now
+                    await bot.send_message(chat_id=CHANNEL_ID, text=message)
 
-                await asyncio.sleep(10)  # Coin arası gecikme
+                await asyncio.sleep(10)  # Coinler arası gecikme
 
-        await asyncio.sleep(30)  # Ana döngü bekleme süresi
+        await asyncio.sleep(30)  # Döngü bitince kısa bekleme
