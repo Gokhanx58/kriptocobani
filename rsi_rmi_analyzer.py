@@ -1,72 +1,61 @@
 from tvDatafeed import TvDatafeed
 import pandas as pd
 from ta.momentum import RSIIndicator
-import numpy as np
+from ta.trend import EMAIndicator
 
-tv = TvDatafeed()  # nologin yöntemi
+tv = TvDatafeed()
 
-def analyze_signals(symbol, exchange, timeframe, manual=True):
+def analyze_signals(symbol, interval, manual=False):
     try:
-        df = tv.get_hist(symbol=symbol, exchange=exchange, interval=interval, n_bars=200)
-        if df is None or df.empty:
-            return "Veri alınamadı."
+        exchange = "MEXC"
+        interval_map = {
+            "1": "1m",
+            "5": "5m",
+            "15": "15m",
+            "30": "30m",
+            "1h": "1h",
+            "4h": "4h",
+            "1d": "1d",
+        }
+        interval_tv = interval_map.get(interval, "1m")
+        data = tv.get_hist(symbol=symbol, exchange=exchange, interval=interval_tv, n_bars=100)
 
-        df = df.dropna()
+        if data is None or data.empty:
+            return f"{symbol} {interval_tv} için veri alınamadı."
 
-        # RSI SWING mantığı (HL, HH, LL, LH)
-        rsi = RSIIndicator(close=df["close"], window=7).rsi()
-        df["rsi"] = rsi
-        df["overbought"] = df["rsi"] >= 70
-        df["oversold"] = df["rsi"] <= 30
+        df = data.copy()
+        df.dropna(inplace=True)
 
-        last_state = None
-        swing_result = "BEKLE"
+        # RMI Trend Sniper (momentum trend)
+        rsi = RSIIndicator(close=df["close"], window=14).rsi()
+        ema = EMAIndicator(close=df["close"], window=5).ema_indicator()
+        mom_positive = (rsi > 66) & (rsi.shift(1) < 66) & (ema.diff() > 0)
+        mom_negative = (rsi < 30) & (ema.diff() < 0)
 
-        for i in range(1, len(df)):
-            if df["oversold"].iloc[i-1] and df["overbought"].iloc[i]:
-                swing_result = "SAT"
-                last_state = "oversold→overbought"
-            elif df["overbought"].iloc[i-1] and df["oversold"].iloc[i]:
-                swing_result = "AL"
-                last_state = "overbought→oversold"
+        # RSI Swing (HH, LL vs mantığı basitleştirilmiş)
+        swing = "BEKLE"
+        if rsi.iloc[-1] > 70 and rsi.iloc[-2] > 70 and df["close"].iloc[-1] < df["close"].iloc[-2]:
+            swing = "SAT"
+        elif rsi.iloc[-1] < 30 and rsi.iloc[-2] < 30 and df["close"].iloc[-1] > df["close"].iloc[-2]:
+            swing = "AL"
 
-        # RMI Trend Sniper mantığı
-        df["delta"] = df["close"].diff()
-        df["gain"] = np.where(df["delta"] > 0, df["delta"], 0)
-        df["loss"] = np.where(df["delta"] < 0, -df["delta"], 0)
-        avg_gain = df["gain"].rolling(window=14).mean()
-        avg_loss = df["loss"].rolling(window=14).mean()
-        rsi_calc = 100 - (100 / (1 + avg_gain / avg_loss))
-        mfi = rsi_calc  # Ortalama RSI gibi davranır
-        rmi_mfi = (rsi_calc + mfi) / 2
-
-        df["rmi_mfi"] = rmi_mfi
-        df["rmi_buy"] = (df["rmi_mfi"].shift(1) < 66) & (df["rmi_mfi"] > 66)
-        df["rmi_sell"] = df["rmi_mfi"] < 30
-
-        rmi_result = "BEKLE"
-        if df["rmi_buy"].iloc[-1]:
-            rmi_result = "AL"
-        elif df["rmi_sell"].iloc[-1]:
-            rmi_result = "SAT"
-
-        # Final sonuç
-        if swing_result == rmi_result and swing_result != "BEKLE":
-            return f"📢 **GÜÇLÜ {swing_result}** — Her iki indikatör aynı sinyali verdi."
-        elif swing_result != rmi_result and "BEKLE" not in (swing_result, rmi_result):
-            return f"⚠️ ÇAKIŞMA: RSI Swing {swing_result}, RMI {rmi_result} — Beklemede kal."
-        elif swing_result != "BEKLE":
-            return f"🟡 RSI Swing: {swing_result}, RMI: BEKLE — Diğeri aynı yönde sinyal verirse işlem alınabilir."
-        elif rmi_result != "BEKLE":
-            return f"🟡 RMI: {rmi_result}, RSI Swing: BEKLE — Diğeri aynı yönde sinyal verirse işlem alınabilir."
+        result = f"{symbol} ({interval_tv})\n"
+        if mom_positive.iloc[-1] and swing == "AL":
+            result += "📈 AL SINYALİ (İki indikatör uyumlu)"
+        elif mom_negative.iloc[-1] and swing == "SAT":
+            result += "📉 SAT SINYALİ (İki indikatör uyumlu)"
+        elif mom_positive.iloc[-1]:
+            result += "RMI AL verdi ama RSI beklemede"
+        elif mom_negative.iloc[-1]:
+            result += "RMI SAT verdi ama RSI beklemede"
+        elif swing == "AL":
+            result += "RSI AL verdi ama RMI beklemede"
+        elif swing == "SAT":
+            result += "RSI SAT verdi ama RMI beklemede"
         else:
-            return "🔍 Henüz net bir sinyal yok (BEKLE)."
+            result += "🔄 BEKLE sinyali"
+
+        return result
 
     except Exception as e:
-        return f"Hata oluştu: {e}"
-
-def auto_check_signals(symbol, exchange, interval):
-    result = analyze_signals(symbol, exchange, interval)
-    if "GÜÇLÜ AL" in result or "GÜÇLÜ SAT" in result:
-        return result
-    return None
+        return f"Hata: {str(e)}"
