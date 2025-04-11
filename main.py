@@ -1,34 +1,33 @@
-import logging
-from telegram.ext import Application, CommandHandler, MessageHandler, filters
-from telegram import Update
-from telegram.ext import ContextTypes
+import asyncio
+from telegram import Bot
+from rsi_rmi_analyzer import analyze_signals
+import time
 
-# Logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
+# Telegram bot token ve kanal chat_id
+TOKEN = '8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs'
+CHANNEL_ID = -1002556449131  # @GoKriptoLine kanal ID
 
-# Token
-TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
+bot = Bot(token=TOKEN)
 
-# Chat ID yakalayıcı
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    logging.info(f"🆔 Chat ID: {chat_id}")
-    await update.message.reply_text(f"📢 Bu sohbetin Chat ID'si: `{chat_id}`", parse_mode="Markdown")
+async def send_signal_to_channel(message):
+    try:
+        await bot.send_message(chat_id=CHANNEL_ID, text=message)
+        print(f"Mesaj gönderildi: {message}")
+    except Exception as e:
+        print(f"Hata oluştu: {e}")
 
-# /start komutu
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Bot çalışıyor. Kanalda mesaj atarsan chat ID’ni yollarım.")
+async def main():
+    while True:
+        try:
+            for symbol in ["BTCUSDT", "ETHUSDT", "AVAXUSDT", "SUIUSDT", "SOLUSDT"]:
+                for interval in ["1m", "5m"]:
+                    signal = analyze_signals(symbol, interval)
+                    if signal:
+                        await send_signal_to_channel(f"{symbol} - {interval} sinyali: {signal}")
+                    await asyncio.sleep(3)  # Çakışmaları önle
+        except Exception as e:
+            print(f"Genel hata: {e}")
+        await asyncio.sleep(60)  # 1 dakikada bir çalışır
 
-# Ana uygulama
-def main():
-    app = Application.builder().token(TOKEN).build()
-
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.ALL, handle_message))
-
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    asyncio.run(main())
