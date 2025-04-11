@@ -1,21 +1,28 @@
+# main.py
+
 import asyncio
 import nest_asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler
 from handlers import analiz_komutu
+from signal_loop import start_signal_loop
 
+# Telegram bot token
+BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
+
+# Event loop çakışmalarını engeller
 nest_asyncio.apply()
 
-app = ApplicationBuilder().token("8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs").build()
-
-# Komut handler'ı tanımlıyoruz
-handle_analiz = CommandHandler("analiz", analiz_komutu)
-app.add_handler(handle_analiz)
-
 async def main():
-    await app.initialize()
-    await app.start()
-    print("🚀 Bot aktif")
-    await app.updater.start_polling()
-    await app.updater.idle()
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-asyncio.run(main())
+    # /analiz komutu ekleniyor
+    app.add_handler(CommandHandler("analiz", analiz_komutu))
+
+    # Otomatik sinyal döngüsünü başlat
+    asyncio.create_task(start_signal_loop(app))
+
+    print("Bot çalışıyor...")
+    await app.run_polling()
+
+if __name__ == "__main__":
+    asyncio.run(main())
