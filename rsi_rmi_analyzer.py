@@ -1,50 +1,31 @@
-import pandas as pd
-from ta.momentum import RSIIndicator
 from tvDatafeed import TvDatafeed
-import asyncio
+import pandas as pd
 import logging
 
 logging.basicConfig(level=logging.INFO)
 
-symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'AVAXUSDT', 'SUIUSDT']
-timeframes = ['1m', '5m']
-
-def analyze_signals(symbol, timeframe, manual=False):
+def analyze_signals(symbol, interval, manual=False, chat_id=None):
     try:
         tv = TvDatafeed()
-        df = tv.get_hist(symbol=symbol, exchange='MEXC', interval=timeframe, n_bars=100)
+        bars = tv.get_hist(symbol=symbol, exchange='BINANCE', interval=interval, n_bars=100)
 
-        if df is None or df.empty:
-            raise ValueError("Veri alınamadı")
+        if bars is None or bars.empty:
+            raise Exception("Veri alınamadı.")
 
-        df['rsi'] = RSIIndicator(df['close'], window=14).rsi()
-        df['rsi_signal'] = df['rsi'].apply(lambda x: 'AŞIRI_ALIM' if x > 70 else 'AŞIRI_SATIM' if x < 30 else 'NORM')
+        close = bars['close']
+        rsi = close.pct_change().rolling(window=14).std()
+        rmi = close.rolling(window=14).mean()
 
-        # Dummy RMI simülasyonu (manuel RMI Trend Sniper tanımı için)
-        df['rmi_signal'] = df['close'].diff().apply(lambda x: 'AL' if x > 0 else 'SAT')
+        last_rsi = rsi.iloc[-1]
+        last_rmi = rmi.iloc[-1]
 
-        rsi = df['rsi_signal'].iloc[-1]
-        rmi = df['rmi_signal'].iloc[-1]
-
-        if rsi in ['AŞIRI_ALIM', 'AŞIRI_SATIM'] and rmi == 'AL':
-            return f"{symbol} [{timeframe}]: 🔼 AL (RSI: {rsi}, RMI: {rmi})"
-        elif rsi in ['AŞIRI_ALIM', 'AŞIRI_SATIM'] and rmi == 'SAT':
-            return f"{symbol} [{timeframe}]: 🔽 SAT (RSI: {rsi}, RMI: {rmi})"
+        if last_rsi > last_rmi:
+            return f"📈 AL sinyali: RSI ({last_rsi:.2f}) > RMI ({last_rmi:.2f})"
+        elif last_rsi < last_rmi:
+            return f"📉 SAT sinyali: RSI ({last_rsi:.2f}) < RMI ({last_rmi:.2f})"
         else:
-            return f"{symbol} [{timeframe}]: ⏸ BEKLE (RSI: {rsi}, RMI: {rmi})"
+            return "⏸️ BEKLE sinyali"
+
     except Exception as e:
         logging.error(f"Veri alınamadı: {e}")
-        return f"HATA: {e}"
-
-async def auto_check_signals(bot, chat_id):
-    while True:
-        try:
-            for symbol in symbols:
-                for timeframe in timeframes:
-                    result = analyze_signals(symbol, timeframe)
-                    if "AL" in result or "SAT" in result:
-                        await bot.send_message(chat_id=chat_id, text=result)
-            await asyncio.sleep(60)
-        except Exception as e:
-            logging.error(f"Otomatik kontrol hatası: {e}")
-            await asyncio.sleep(60)
+        return f"Hata oluştu: {e}"
