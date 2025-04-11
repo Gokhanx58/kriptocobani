@@ -1,32 +1,39 @@
 import asyncio
 import logging
-from telegram.ext import Application, CommandHandler
-from rsi_rmi_analyzer import analyze_signals, auto_signal_runner
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
-logging.basicConfig(level=logging.INFO)
+# 🔧 Logging ayarı
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 
+# 🔧 Bot token (kendi tokeninle değiştir)
 TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
 
-async def handle_analysis(update, context):
-    if len(context.args) != 2:
-        await update.message.reply_text("Kullanım: /analiz COIN ZAMAN (örn: /analiz BTCUSDT 5)")
-        return
+# ✅ Chat ID yakalama fonksiyonu
+async def catch_chat_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    logging.info(f"Kanal Chat ID: {chat_id}")
+    await update.message.reply_text(
+        f"📢 Bu kanalın Chat ID’si: `{chat_id}`", parse_mode="Markdown"
+    )
 
-    symbol = context.args[0].upper()
-    interval = context.args[1]
+# 🔧 /start komutu (test için)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Merhaba! Kanal chat ID’sini öğrenmek için bu botu kanala yönetici yap ve kanala bir mesaj at.")
 
-    result = analyze_signals(symbol, interval, manual=True)
-    await update.message.reply_text(result)
-
+# ✅ Ana fonksiyon
 async def main():
     app = Application.builder().token(TOKEN).build()
-    app.add_handler(CommandHandler("analiz", handle_analysis))
 
-    asyncio.create_task(auto_signal_runner())
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling()
-    await app.updater.idle()
+    # Komut ve mesaj yakalayıcılar
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.ALL, catch_chat_id))  # Tüm mesajları yakala
 
-# Buradaki tek fark bu!
-asyncio.get_event_loop().create_task(main())
+    # Botu çalıştır
+    await app.run_polling()
+
+# ✅ Başlat
+if __name__ == "__main__":
+    asyncio.run(main())
