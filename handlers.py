@@ -4,16 +4,17 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from analyzer import analyze_signals
 
-async def handle_analiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# /analiz komutu için handler
+async def analiz_komutu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        if not context.args or len(context.args) != 2:
-            await update.message.reply_text("Kullanım: /analiz COIN ZAMAN\nÖrnek: /analiz BTCUSDT 5")
+        if len(context.args) != 2:
+            await update.message.reply_text("Kullanım: /analiz <sembol> <zaman_dilimi>\nÖrn: /analiz BTCUSDT 1")
             return
-
+        
         symbol = context.args[0].upper()
-        interval = context.args[1]
+        timeframe = context.args[1]
 
-        result = analyze_signals(symbol, interval, manual=True)
+        result = analyze_signals(symbol, timeframe, manual=True)
         await update.message.reply_text(result)
 
     except Exception as e:
