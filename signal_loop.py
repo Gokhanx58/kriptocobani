@@ -1,22 +1,45 @@
-# signal_loop.py
-
 import asyncio
-from analyzer import analyze_signals
+from datetime import datetime, timedelta
 from telegram import Bot
+from rsi_rmi_analyzer import analyze_signals
 
-BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
-CHANNEL_ID = "-1002556449131"  # Kanal ID
+TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
+CHANNEL_ID = "@GoKriptoLine"
+bot = Bot(token=TOKEN)
 
-symbol_list = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]
-interval_list = ["1", "5"]
+# Spam kontrolü için gönderilen sinyalleri hatırlama
+sent_signals = {}
 
 async def start_signal_loop():
-    bot = Bot(token=BOT_TOKEN)
+    symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]
+    intervals = ["1", "5"]
+
     while True:
-        for symbol in symbol_list:
-            for interval in interval_list:
-                result = analyze_signals(symbol, interval, manual=False)
-                if result != "BEKLE":
-                    await bot.send_message(chat_id=CHANNEL_ID, text=f"{symbol} - {interval}m sinyali: {result}")
-                await asyncio.sleep(30)
-        await asyncio.sleep(30)
+        for symbol in symbols:
+            for interval in intervals:
+                try:
+                    result = analyze_signals(symbol, interval)
+                    message = f"{symbol} {interval}m sinyali: {result}"
+
+                    # Sinyal anahtarı (örnek: "BTCUSDT_1_AL")
+                    key = f"{symbol}_{interval}_{result}"
+                    now = datetime.utcnow()
+
+                    # 3 dakika içinde aynı sinyal geldiyse atlama
+                    if key in sent_signals:
+                        last_sent_time = sent_signals[key]
+                        if now - last_sent_time < timedelta(minutes=3):
+                            continue  # Aynı sinyal 3 dakika içinde tekrar etmesin
+
+                    # Yeni sinyalse mesajı gönder
+                    await bot.send_message(chat_id=CHANNEL_ID, text=message)
+
+                    # Gönderilen sinyali kaydet
+                    sent_signals[key] = now
+
+                except Exception as e:
+                    print(f"Hata oluştu: {e}")
+
+                await asyncio.sleep(3)
+
+        await asyncio.sleep(30)  # Döngü her 30 saniyede bir tekrar eder
