@@ -1,16 +1,23 @@
-# main.py
-
 import asyncio
-from telegram.ext import ApplicationBuilder
-from handlers import handle_analiz
+import nest_asyncio
+from telegram.ext import ApplicationBuilder, CommandHandler
+from handlers import analiz_komutu
+
+nest_asyncio.apply()
 
 TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
 
 app = ApplicationBuilder().token(TOKEN).build()
+
+# Komut handler'ı tanımlıyoruz
+handle_analiz = CommandHandler("analiz", analiz_komutu)
 app.add_handler(handle_analiz)
 
-if __name__ == '__main__':
-    # Render gibi platformlar zaten async loop çalıştırıyor, o yüzden asyncio.run() değil bu yöntem!
-    import nest_asyncio
-    nest_asyncio.apply()
-    app.run_polling()
+async def main():
+    await app.initialize()
+    await app.start()
+    print("Bot başlatıldı")
+    await app.updater.start_polling()
+    await app.updater.idle()
+
+asyncio.run(main())
