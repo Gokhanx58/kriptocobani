@@ -1,64 +1,62 @@
-import time
 import logging
-import asyncio  # EKLENDİ
-from datetime import datetime
-from tvDatafeed import TvDatafeed
-from ta.momentum import RSIIndicator
-import pandas as pd
+import asyncio
+from tvDatafeed import TvDatafeed, Interval
+from telegram import Bot
 
-tv = TvDatafeed()
+logging.basicConfig(level=logging.INFO)
 
-async def auto_signal_runner(bot, symbol, intervals):
-    while True:
-        for interval in intervals:
-            try:
-                msg = analyze_signals(symbol, interval)
-                if msg:
-                    await bot.send_message(chat_id="@GoKriptoLineBot", text=msg)
-                await asyncio.sleep(3)
-            except Exception as e:
-                logging.error(f"Auto signal error: {e}")
-        await asyncio.sleep(60)
+bot = Bot(token="8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs")
+chat_id = "@GoKriptoLineBot"
 
-def analyze_signals(symbol: str, interval: str, manual=False):
+tv = TvDatafeed()  # nologin
+
+symbol_list = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]
+interval_mapping = {"1": Interval.in_1_minute, "5": Interval.in_5_minute}
+
+def analyze_signals(symbol, interval, manual=False):
     try:
-        df = tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval, n_bars=100)
-        if df is None or df.empty:
-            raise Exception("Veri alınamadı")
+        tv_interval = interval_mapping.get(str(interval))
+        if not tv_interval:
+            return "Geçersiz zaman dilimi. Sadece 1 veya 5 dakika destekleniyor."
 
-        df['rsi'] = RSIIndicator(close=df['close'], window=14).rsi()
-        df['rmi'] = df['rsi'].rolling(window=5).mean()
+        data = tv.get_hist(symbol=symbol, exchange='MEXC', interval=tv_interval, n_bars=100)
+        if data is None or data.empty:
+            return "Veri alınamadı."
 
-        rsi_last = df['rsi'].iloc[-1]
-        rmi_last = df['rmi'].iloc[-1]
+        close = data["close"]
+        if isinstance(close.iloc[-1], str):
+            return "Veri alınamadı: 'str' object has no attribute 'value'"
 
-        signal_rsi = ""
-        if rsi_last < 30:
-            signal_rsi = "RSI: AŞIRI SATIM"
-        elif rsi_last > 70:
-            signal_rsi = "RSI: AŞIRI ALIM"
+        son_kapanis = close.iloc[-1]
+        onceki_kapanis = close.iloc[-2]
 
-        signal_rmi = ""
-        if rmi_last > df['rmi'].iloc[-2]:
-            signal_rmi = "RMI: YÜKSELİŞ"
-        elif rmi_last < df['rmi'].iloc[-2]:
-            signal_rmi = "RMI: DÜŞÜŞ"
+        rmi_signal = "AL" if son_kapanis > onceki_kapanis else "SAT"
+        rsi_signal = "AL" if son_kapanis > close.mean() else "SAT"
 
-        final_signal = ""
-        if "AŞIRI SATIM" in signal_rsi and "YÜKSELİŞ" in signal_rmi:
-            final_signal = "📈 AL"
-        elif "AŞIRI ALIM" in signal_rsi and "DÜŞÜŞ" in signal_rmi:
-            final_signal = "📉 SAT"
-        elif "AŞIRI" in signal_rsi or signal_rmi:
-            final_signal = "⏳ BEKLE"
-
-        if manual:
-            return f"🔍 {symbol} | {interval} dakikalık analiz:\n\n{signal_rsi}\n{signal_rmi}\n\n📊 Sonuç: {final_signal}"
+        if rmi_signal == rsi_signal:
+            mesaj = f"{symbol} ({interval}dk) ➤ {rmi_signal}"
         else:
-            if final_signal in ["📈 AL", "📉 SAT"]:
-                return f"🔔 {symbol} | {interval} dakikalık sinyal geldi!\n{signal_rsi}\n{signal_rmi}\n\n➡️ {final_signal}"
-            return None
+            mesaj = f"{symbol} ({interval}dk) ➤ BEKLE (RMI: {rmi_signal}, RSI: {rsi_signal})"
+
+        return mesaj
 
     except Exception as e:
         logging.error(f"Veri alınamadı: {e}")
-        return "⚠️ Veri alınamadı."
+        return "Veri alınamadı"
+
+async def auto_signal_runner():
+    while True:
+        try:
+            for symbol in symbol_list:
+                for interval in ["1", "5"]:
+                    result = analyze_signals(symbol, interval)
+                    if "➤ AL" in result or "➤ SAT" in result:
+                        try:
+                            await bot.send_message(chat_id=chat_id, text=result)
+                        except Exception as e:
+                            logging.error(f"Auto signal error: {e}")
+                    await asyncio.sleep(3)  # Her sorgu arası bekleme
+            await asyncio.sleep(60)  # Tüm döngü sonrası 1 dakika bekleme
+        except Exception as e:
+            logging.error(f"Auto signal error: {e}")
+            await asyncio.sleep(10)
