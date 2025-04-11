@@ -22,8 +22,11 @@ async def main():
     app = Application.builder().token(TOKEN).build()
     app.add_handler(CommandHandler("analiz", handle_analysis))
 
-    asyncio.create_task(auto_signal_runner())  # Otomatik sinyal üretimi
-    await app.run_polling()
+    asyncio.create_task(auto_signal_runner())
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+    await app.updater.idle()
 
-if __name__ == '__main__':
-    asyncio.run(main())
+# Buradaki tek fark bu!
+asyncio.get_event_loop().create_task(main())
