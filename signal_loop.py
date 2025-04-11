@@ -7,7 +7,7 @@ TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
 CHANNEL_ID = "@GoKriptoLine"
 bot = Bot(token=TOKEN)
 
-# Spam kontrolü için gönderilen sinyalleri hatırlama
+# Gönderilen sinyalleri tutan yapı (3 dakika kontrolü)
 sent_signals = {}
 
 async def start_signal_loop():
@@ -19,27 +19,24 @@ async def start_signal_loop():
             for interval in intervals:
                 try:
                     result = analyze_signals(symbol, interval)
-                    message = f"{symbol} {interval}m sinyali: {result}"
+                    if not result:
+                        continue
 
-                    # Sinyal anahtarı (örnek: "BTCUSDT_1_AL")
-                    key = f"{symbol}_{interval}_{result}"
                     now = datetime.utcnow()
+                    key = f"{symbol}_{interval}_{result}"
 
-                    # 3 dakika içinde aynı sinyal geldiyse atlama
-                    if key in sent_signals:
-                        last_sent_time = sent_signals[key]
-                        if now - last_sent_time < timedelta(minutes=3):
-                            continue  # Aynı sinyal 3 dakika içinde tekrar etmesin
+                    # Eğer aynı sinyal 3 dakika içinde gönderildiyse atla
+                    if key in sent_signals and now - sent_signals[key] < timedelta(minutes=3):
+                        continue
 
-                    # Yeni sinyalse mesajı gönder
+                    message = f"{symbol} {interval}m sinyali: {result}"
                     await bot.send_message(chat_id=CHANNEL_ID, text=message)
 
-                    # Gönderilen sinyali kaydet
                     sent_signals[key] = now
 
                 except Exception as e:
                     print(f"Hata oluştu: {e}")
 
-                await asyncio.sleep(3)
+                await asyncio.sleep(10)  # Coin arası gecikme
 
-        await asyncio.sleep(30)  # Döngü her 30 saniyede bir tekrar eder
+        await asyncio.sleep(30)  # Ana döngü bekleme süresi
