@@ -1,32 +1,29 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from rsi_rmi_analyzer import analyze_signals, auto_signal_runner
 import asyncio
+import logging
+from telegram.ext import Application, CommandHandler
+from rsi_rmi_analyzer import analyze_signals, auto_signal_runner
 
-BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
+logging.basicConfig(level=logging.INFO)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Merhaba! Komutlar hazır. Örnek: /analiz BTCUSDT 5")
+TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
 
-async def analiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        pair = context.args[0].upper()
-        interval = context.args[1]
-        result = analyze_signals(pair, interval, manual=True)
-        await update.message.reply_text(result)
-    except Exception as e:
-        await update.message.reply_text(f"Hata: {str(e)}")
+async def handle_analysis(update, context):
+    if len(context.args) != 2:
+        await update.message.reply_text("Kullanım: /analiz COIN ZAMAN (örn: /analiz BTCUSDT 5)")
+        return
+
+    symbol = context.args[0].upper()
+    interval = context.args[1]
+
+    result = analyze_signals(symbol, interval, manual=True)
+    await update.message.reply_text(result)
 
 async def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("analiz", analiz))
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("analiz", handle_analysis))
 
-    asyncio.create_task(auto_signal_runner(app.bot, "BTCUSDT", ["1"]))
-    await asyncio.sleep(3)
-    asyncio.create_task(auto_signal_runner(app.bot, "BTCUSDT", ["5"]))
-    
+    asyncio.create_task(auto_signal_runner())  # Otomatik sinyal üretimi
     await app.run_polling()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     asyncio.run(main())
