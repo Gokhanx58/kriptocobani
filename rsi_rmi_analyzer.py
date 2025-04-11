@@ -1,5 +1,6 @@
 import time
 import logging
+import asyncio  # EKLENDİ
 from datetime import datetime
 from tvDatafeed import TvDatafeed
 from ta.momentum import RSIIndicator
