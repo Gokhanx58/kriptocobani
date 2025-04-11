@@ -1,66 +1,41 @@
 import logging
 import asyncio
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
-from rsi_rmi_analyzer import analyze_signals
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from rsi_rmi_analyzer import analyze_signals, auto_check_signals
 
 TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
-CHAT_ID = "1195723889"
+CHAT_ID = 1195723889  # Kendi kullanıcı ID'in
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
-logger = logging.getLogger(__name__)
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("GoKriptoLine Bot aktif. Sinyal almak için örnek: /analiz BTCUSDT 5")
+    await update.message.reply_text("Bot çalışıyor!")
 
-
-async def analyze_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def analiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        _, symbol, tf = update.message.text.strip().split()
-        result = analyze_signals(symbol.upper(), tf, manual=True)
+        if len(context.args) != 2:
+            await update.message.reply_text("Komut formatı: /analiz COIN ZAMAN")
+            return
+        symbol = context.args[0].upper()
+        timeframe = context.args[1]
+        result = analyze_signals(symbol, timeframe, manual=True)
         await update.message.reply_text(result)
     except Exception as e:
-        await update.message.reply_text("Komut hatalı. Doğru kullanım: /analiz BTCUSDT 5")
-
-
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        message = update.message.text.strip().upper()
-        if " " in message:
-            symbol, tf = message.split()
-            result = analyze_signals(symbol, tf, manual=True)
-            await update.message.reply_text(result)
-    except Exception as e:
-        await update.message.reply_text("Hatalı mesaj. Örnek: btcusdt 5")
-
-
-async def auto_signal_loop():
-    while True:
-        for symbol in ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]:
-            for tf in ["1", "5"]:
-                result = analyze_signals(symbol, tf, manual=False)
-                if result != "BEKLE":
-                    from telegram import Bot
-                    bot = Bot(token=TOKEN)
-                    await bot.send_message(chat_id=CHAT_ID, text=f"{symbol} {tf} dakikalık sinyal:\n{result}")
-        await asyncio.sleep(60)
-
+        await update.message.reply_text(f"Hata oluştu: {e}")
 
 async def main():
-    application = Application.builder().token(TOKEN).build()
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("analiz", analiz))
 
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("analiz", analyze_command))
-    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    loop = asyncio.get_running_loop()
+    loop.create_task(auto_check_signals(app.bot, CHAT_ID))
 
-    asyncio.create_task(auto_signal_loop())
-
-    await application.run_polling()
-
+    await app.run_polling()
 
 if __name__ == "__main__":
     asyncio.run(main())
