@@ -1,67 +1,67 @@
+# analyzer.py
+
 import pandas as pd
 import numpy as np
-from tvDatafeed import TvDatafeed, Interval
-from ta.momentum import RSIIndicator
+import ta
 
-tv = TvDatafeed()  # nologin yöntemiyle çalışıyor
+def rsi_swing(df, rsi_length=7, rsi_ob=70, rsi_os=30):
+    df = df.copy()
+    df["rsi"] = ta.momentum.RSIIndicator(df["close"], window=rsi_length).rsi()
+    df["sinyal"] = "BEKLE"
 
-# Zaman dilimi eşlemesi
-interval_map = {
-    "1m": Interval.in_1_minute,
-    "5m": Interval.in_5_minute
-}
+    laststate = None
+    hh = ll = None
+    last_label_price = None
 
-def get_data(symbol: str, interval: str, n_bars: int = 100):
-    return tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval_map[interval], n_bars=n_bars)
+    for i in range(len(df)):
+        rsi_val = df["rsi"].iloc[i]
+        high = df["high"].iloc[i]
+        low = df["low"].iloc[i]
 
-def rsi_swing_signal(df):
-    rsi = RSIIndicator(df["close"], window=7).rsi()
-    overbought = 70
-    oversold = 30
+        if rsi_val >= rsi_ob:
+            if laststate == "OS":
+                label = "HH" if last_label_price is not None and high > last_label_price else "LH"
+                df["sinyal"].iloc[i] = label
+                last_label_price = high
+            hh = max(hh or high, high)
+            laststate = "OB"
 
-    last_label = None
-    last_price = None
-    signal = "BEKLE"
+        elif rsi_val <= rsi_os:
+            if laststate == "OB":
+                label = "LL" if last_label_price is not None and low < last_label_price else "HL"
+                df["sinyal"].iloc[i] = label
+                last_label_price = low
+            ll = min(ll or low, low)
+            laststate = "OS"
 
-    for i in range(1, len(rsi)):
-        if rsi[i - 1] < overbought and rsi[i] >= overbought:
-            label = "HH" if last_price is not None and df["high"].iloc[i] > last_price else "LH"
-            last_label = label
-            last_price = df["high"].iloc[i]
-        elif rsi[i - 1] > oversold and rsi[i] <= oversold:
-            label = "LL" if last_price is not None and df["low"].iloc[i] < last_price else "HL"
-            last_label = label
-            last_price = df["low"].iloc[i]
+    son_sinyal = df["sinyal"].iloc[-1]
+    if son_sinyal in ["HL", "LL"]:
+        return "AL"
+    elif son_sinyal in ["HH", "LH"]:
+        return "SAT"
+    else:
+        return "BEKLE"
 
-    if last_label in ["HL", "LL"]:
-        signal = "AL"
-    elif last_label in ["HH", "LH"]:
-        signal = "SAT"
 
-    return signal
-
-def rmi_trend_sniper(df):
-    length = 14
-    pmom = 66
-    nmom = 30
-
+def rmi_trend_sniper(df, rmi_length=14, pmom=66, nmom=30):
+    df = df.copy()
     close = df["close"]
     up = close.diff().clip(lower=0)
     down = -close.diff().clip(upper=0)
-    avg_up = up.rolling(length).mean()
-    avg_down = down.rolling(length).mean()
-    rsi = 100 - (100 / (1 + avg_up / avg_down))
+    ema_up = up.ewm(span=rmi_length).mean()
+    ema_down = down.ewm(span=rmi_length).mean()
+    rmi = 100 - (100 / (1 + ema_up / ema_down))
+    rmi = (rmi + ta.volume.MFIIndicator(df["high"], df["low"], df["close"], df["volume"], window=rmi_length).money_flow_index()) / 2
 
-    mfi = ((df['high'] + df['low'] + df['close']) / 3).rolling(length).mean()  # basitleştirilmiş MFI yerine
-    rmi = (rsi + mfi) / 2
+    ema_5 = close.ewm(span=5).mean()
+    ema_diff = ema_5.diff()
 
-    # DÖNÜŞÜMLER (HATA ENGELİ)
-    rmi = pd.to_numeric(rmi, errors='coerce').fillna(0)
-    ema = close.ewm(span=5, adjust=False).mean()
-    ema_diff = ema.diff()
-
-    positive = (rmi.shift(1) < pmom) & (rmi > pmom) & (rmi > nmom) & (ema_diff > 0)
-    negative = (rmi < nmom) & (ema_diff < 0)
+    # Not: Tarih indeksli veri olabilir, bu yüzden Timestamp uyarılarına dikkat
+    try:
+        positive = (rmi.shift(1) < pmom) & (rmi > pmom) & (rmi > nmom) & (ema_diff > 0)
+        negative = (rmi < nmom) & (ema_diff < 0)
+    except:
+        return "BEKLE"
 
     if positive.iloc[-1]:
         return "AL"
@@ -70,17 +70,31 @@ def rmi_trend_sniper(df):
     else:
         return "BEKLE"
 
-def analyze_signals(symbol="BTCUSDT", interval="1m"):
-    df = get_data(symbol, interval)
-    if df is None or df.empty:
-        return "Veri alınamadı."
 
-    rsi_signal = rsi_swing_signal(df)
-    rmi_signal = rmi_trend_sniper(df)
+def analyze_signals(symbol, interval):
+    from tvDatafeed import TvDatafeed, Interval
+    tv = TvDatafeed()
+    
+    try:
+        interval_map = {
+            "1m": Interval.in_1_minute,
+            "5m": Interval.in_5_minute
+        }
 
-    if rsi_signal == "AL" and rmi_signal == "AL":
-        return f"{symbol} [{interval}] 🔼 **AL**\n🟢 RSI: {rsi_signal}\n🟢 RMI: {rmi_signal}"
-    elif rsi_signal == "SAT" and rmi_signal == "SAT":
-        return f"{symbol} [{interval}] 🔻 **SAT**\n🔴 RSI: {rsi_signal}\n🔴 RMI: {rmi_signal}"
-    else:
-        return f"{symbol} [{interval}] ⚠️ **BEKLE**\n📉 RSI: {rsi_signal}\n📉 RMI: {rmi_signal}"
+        df = tv.get_hist(symbol=symbol, exchange="MEXC", interval=interval_map[interval], n_bars=200)
+        if df is None or df.empty:
+            return None
+
+        rsi_result = rsi_swing(df)
+        rmi_result = rmi_trend_sniper(df)
+
+        if rsi_result == "AL" and rmi_result == "AL":
+            return rsi_result, rmi_result, "AL"
+        elif rsi_result == "SAT" and rmi_result == "SAT":
+            return rsi_result, rmi_result, "SAT"
+        else:
+            return rsi_result, rmi_result, "BEKLE"
+
+    except Exception as e:
+        print(f"HATA - {symbol} - {interval} => {e}")
+        return None
