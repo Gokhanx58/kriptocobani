@@ -2,7 +2,7 @@
 
 import asyncio
 from analyzer import analyze_signals
-from telegram_send import send_signal_to_channel
+from telegram_send import send_telegram_message
 
 SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]
 INTERVALS = ["1m", "5m"]
