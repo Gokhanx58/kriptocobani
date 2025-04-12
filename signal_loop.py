@@ -1,5 +1,3 @@
-# signal_loop.py
-
 import asyncio
 from analyzer import analyze_signals
 from telegram_send import send_telegram_message
@@ -18,7 +16,11 @@ async def start_signal_loop():
                     result = await analyze_signals(symbol, interval)
                     if result != last_signals.get(key):
                         last_signals[key] = result
-                        await send_signal_to_channel(symbol, interval, result)
+
+                        # Mesajı Telegram formatında hazırla
+                        message = f"<b>{symbol} ({interval})</b> için sinyal: <b>{result}</b>"
+                        send_telegram_message(message)
+
                         await asyncio.sleep(3)  # Çakışmayı önlemek için bekleme
                 except Exception as e:
                     print(f"Hata ({symbol} - {interval}):", e)
