@@ -15,14 +15,20 @@ async def start_signal_loop():
             for interval in INTERVALS:
                 try:
                     key = f"{symbol}_{interval}"
-                    final_signal, rsi_swing_signal, rmi_signal = await analyze_signals(symbol, interval)
+                    final_signal, rsi_result, rmi_result = await analyze_signals(symbol, interval)
 
-                    if last_signals.get(key) != final_signal:
+                    if final_signal != last_signals.get(key):
                         last_signals[key] = final_signal
-                        send_telegram_message(symbol, interval, final_signal, rsi_swing_signal, rmi_signal)
-                        await asyncio.sleep(3)  # Çakışmayı önlemek için gecikme
+
+                        message = f"<b>{symbol} ({interval})</b>\n"
+                        message += f"RSI Swing: <b>{rsi_result}</b>\n"
+                        message += f"RMI Trend: <b>{rmi_result}</b>\n"
+                        message += f"Sonuç: <b>{final_signal}</b>"
+
+                        await send_telegram_message(message)
+                        await asyncio.sleep(3)  # çakışmayı engelle
 
                 except Exception as e:
-                    print(f"HATA: {symbol} - {interval}: {e}")
+                    print(f"[signal_loop] Hata ({symbol} - {interval}):", e)
 
-        await asyncio.sleep(180)  # 3 dakikada bir kontrol
+        await asyncio.sleep(180)  # Her 3 dakikada bir tekrar
