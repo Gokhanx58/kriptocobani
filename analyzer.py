@@ -1,48 +1,67 @@
 import pandas as pd
 import numpy as np
 from tvDatafeed import TvDatafeed, Interval
-from datetime import datetime, timedelta
+from ta.momentum import RSIIndicator
 
-# Giriş yapılmadan (nologin) veri çekiliyor
-tv = TvDatafeed()
+tv = TvDatafeed()  # nologin yöntemiyle çalışıyor
 
-# Önceki sinyali hafızada tutan global değişken
-last_signals = {}
+# Zaman dilimi eşlemesi
+interval_map = {
+    "1m": Interval.in_1_minute,
+    "5m": Interval.in_5_minute
+}
 
-# RSI hesaplama
-def calculate_rsi(series, length=7):
-    delta = series.diff()
-    gain = delta.where(delta > 0, 0)
-    loss = -delta.where(delta < 0, 0)
-    avg_gain = gain.rolling(length).mean()
-    avg_loss = loss.rolling(length).mean()
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
+def get_data(symbol: str, interval: str, n_bars: int = 100):
+    return tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval_map[interval], n_bars=n_bars)
 
-# MFI hesaplama
-def calculate_mfi(df, period=14):
-    tp = (df['close'] + df['high'] + df['low']) / 3
-    mf = tp * df['volume']
-    pos_mf = np.where(tp > tp.shift(1), mf, 0)
-    neg_mf = np.where(tp < tp.shift(1), mf, 0)
-    mfi = 100 * (pd.Series(pos_mf).rolling(period).sum() /
-                (pd.Series(pos_mf).rolling(period).sum() + pd.Series(neg_mf).rolling(period).sum()))
-    return mfi
+def rsi_swing_signal(df):
+    rsi = RSIIndicator(df["close"], window=7).rsi()
+    overbought = 70
+    oversold = 30
 
-# RMI hesaplama: RSI + MFI ortalaması
-def calculate_rmi(df, period=14):
-    rsi = calculate_rsi(df['close'], period)
-    mfi = calculate_mfi(df, period)
-    return (rsi + mfi) / 2
+    last_label = None
+    last_price = None
+    signal = "BEKLE"
 
-# RMI Sniper sinyali (momentum)
-def get_rmi_sniper(df):
-    rmi = calculate_rmi(df)
-    ema = df['close'].ewm(span=5).mean()
+    for i in range(1, len(rsi)):
+        if rsi[i - 1] < overbought and rsi[i] >= overbought:
+            label = "HH" if last_price is not None and df["high"].iloc[i] > last_price else "LH"
+            last_label = label
+            last_price = df["high"].iloc[i]
+        elif rsi[i - 1] > oversold and rsi[i] <= oversold:
+            label = "LL" if last_price is not None and df["low"].iloc[i] < last_price else "HL"
+            last_label = label
+            last_price = df["low"].iloc[i]
+
+    if last_label in ["HL", "LL"]:
+        signal = "AL"
+    elif last_label in ["HH", "LH"]:
+        signal = "SAT"
+
+    return signal
+
+def rmi_trend_sniper(df):
+    length = 14
+    pmom = 66
+    nmom = 30
+
+    close = df["close"]
+    up = close.diff().clip(lower=0)
+    down = -close.diff().clip(upper=0)
+    avg_up = up.rolling(length).mean()
+    avg_down = down.rolling(length).mean()
+    rsi = 100 - (100 / (1 + avg_up / avg_down))
+
+    mfi = ((df['high'] + df['low'] + df['close']) / 3).rolling(length).mean()  # basitleştirilmiş MFI yerine
+    rmi = (rsi + mfi) / 2
+
+    # DÖNÜŞÜMLER (HATA ENGELİ)
+    rmi = pd.to_numeric(rmi, errors='coerce').fillna(0)
+    ema = close.ewm(span=5, adjust=False).mean()
     ema_diff = ema.diff()
 
-    positive = (rmi.shift(1) < 66) & (rmi > 66) & (rmi > 30) & (ema_diff > 0)
-    negative = (rmi < 30) & (ema_diff < 0)
+    positive = (rmi.shift(1) < pmom) & (rmi > pmom) & (rmi > nmom) & (ema_diff > 0)
+    negative = (rmi < nmom) & (ema_diff < 0)
 
     if positive.iloc[-1]:
         return "AL"
@@ -51,57 +70,17 @@ def get_rmi_sniper(df):
     else:
         return "BEKLE"
 
-# RSI Swing sinyali (trend yapısı)
-def get_rsi_swing(df, rsi_len=7, overbought=70, oversold=30):
-    rsi = calculate_rsi(df['close'], rsi_len)
-    signal = "BEKLE"
+def analyze_signals(symbol="BTCUSDT", interval="1m"):
+    df = get_data(symbol, interval)
+    if df is None or df.empty:
+        return "Veri alınamadı."
 
-    if rsi.iloc[-2] <= oversold and rsi.iloc[-1] > oversold:
-        if df['low'].iloc[-1] > df['low'].iloc[-2]:
-            signal = "AL"
+    rsi_signal = rsi_swing_signal(df)
+    rmi_signal = rmi_trend_sniper(df)
 
-    elif rsi.iloc[-2] >= overbought and rsi.iloc[-1] < overbought:
-        if df['high'].iloc[-1] < df['high'].iloc[-2]:
-            signal = "SAT"
-
-    return signal
-
-# Zaman dilimi eşleşmesi
-timeframe_map = {
-    "1": Interval.in_1_minute,
-    "5": Interval.in_5_minute
-}
-
-# Ana analiz fonksiyonu
-def analyze_signals(symbol: str, tf_str: str = "1", manual=False):
-    try:
-        interval = timeframe_map.get(tf_str, Interval.in_1_minute)
-        df = tv.get_hist(symbol=symbol, exchange="MEXC", interval=interval, n_bars=200)
-        if df is None or len(df) < 20:
-            return "Veri alınamadı."
-
-        df = df.dropna()
-
-        rsi_signal = get_rsi_swing(df)
-        rmi_signal = get_rmi_sniper(df)
-
-        signal_key = f"{symbol}_{tf_str}"
-        previous_signal = last_signals.get(signal_key, "BEKLE")
-        combined_signal = "BEKLE"
-
-        if rsi_signal == rmi_signal and rsi_signal in ["AL", "SAT"]:
-            combined_signal = rsi_signal
-        elif rsi_signal in ["AL", "SAT"] or rmi_signal in ["AL", "SAT"]:
-            combined_signal = "BEKLE"
-
-        # Sadece sinyal değiştiyse dön
-        if not manual:
-            if previous_signal != combined_signal:
-                last_signals[signal_key] = combined_signal
-                return f"<b>{symbol} ({tf_str}dk)</b>\n🧠 RSI Swing: {rsi_signal}\n📊 RMI Trend Sniper: {rmi_signal}\n📢 Sinyal: <b>{combined_signal}</b>"
-            return None
-        else:
-            return f"<b>{symbol} ({tf_str}dk)</b>\n🧠 RSI Swing: {rsi_signal}\n📊 RMI Trend Sniper: {rmi_signal}\n📢 Sinyal: <b>{combined_signal}</b>"
-
-    except Exception as e:
-        return f"Hata: {str(e)}"
+    if rsi_signal == "AL" and rmi_signal == "AL":
+        return f"{symbol} [{interval}] 🔼 **AL**\n🟢 RSI: {rsi_signal}\n🟢 RMI: {rmi_signal}"
+    elif rsi_signal == "SAT" and rmi_signal == "SAT":
+        return f"{symbol} [{interval}] 🔻 **SAT**\n🔴 RSI: {rsi_signal}\n🔴 RMI: {rmi_signal}"
+    else:
+        return f"{symbol} [{interval}] ⚠️ **BEKLE**\n📉 RSI: {rsi_signal}\n📉 RMI: {rmi_signal}"
