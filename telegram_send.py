@@ -1,5 +1,3 @@
-# telegram_send.py
-
 import httpx
 
 BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
