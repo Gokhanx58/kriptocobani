@@ -1,120 +1,107 @@
-# analyzer.py
-
-from tvDatafeed import TvDatafeed, Interval
 import pandas as pd
 import numpy as np
+from tvDatafeed import TvDatafeed, Interval
+from datetime import datetime, timedelta
 
+# Giriş yapılmadan (nologin) veri çekiliyor
 tv = TvDatafeed()
 
-def get_interval(interval_str):
-    return {
-        "1": Interval.in_1_minute,
-        "5": Interval.in_5_minute,
-    }.get(interval_str, Interval.in_1_minute)
+# Önceki sinyali hafızada tutan global değişken
+last_signals = {}
 
-def rsi_swing(df):
-    rsi = ta_rsi(df['close'], 7)
-    highs = df['high']
-    lows = df['low']
-    
-    swing = []
-    last_state = None
-    last_price = None
+# RSI hesaplama
+def calculate_rsi(series, length=7):
+    delta = series.diff()
+    gain = delta.where(delta > 0, 0)
+    loss = -delta.where(delta < 0, 0)
+    avg_gain = gain.rolling(length).mean()
+    avg_loss = loss.rolling(length).mean()
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
 
-    for i in range(len(rsi)):
-        if rsi[i] >= 70:
-            if last_state == "oversold":
-                label = "AL" if lows[i] > last_price else "BEKLE"
-                swing.append(label)
-            else:
-                swing.append("BEKLE")
-            last_state = "overbought"
-            last_price = highs[i]
-        elif rsi[i] <= 30:
-            if last_state == "overbought":
-                label = "SAT" if highs[i] < last_price else "BEKLE"
-                swing.append(label)
-            else:
-                swing.append("BEKLE")
-            last_state = "oversold"
-            last_price = lows[i]
-        else:
-            swing.append("BEKLE")
+# MFI hesaplama
+def calculate_mfi(df, period=14):
+    tp = (df['close'] + df['high'] + df['low']) / 3
+    mf = tp * df['volume']
+    pos_mf = np.where(tp > tp.shift(1), mf, 0)
+    neg_mf = np.where(tp < tp.shift(1), mf, 0)
+    mfi = 100 * (pd.Series(pos_mf).rolling(period).sum() /
+                (pd.Series(pos_mf).rolling(period).sum() + pd.Series(neg_mf).rolling(period).sum()))
+    return mfi
 
-    return swing[-1]
+# RMI hesaplama: RSI + MFI ortalaması
+def calculate_rmi(df, period=14):
+    rsi = calculate_rsi(df['close'], period)
+    mfi = calculate_mfi(df, period)
+    return (rsi + mfi) / 2
 
-def rmi_trend_sniper(df):
-    length = 14
-    pmom = 66
-    nmom = 30
+# RMI Sniper sinyali (momentum)
+def get_rmi_sniper(df):
+    rmi = calculate_rmi(df)
+    ema = df['close'].ewm(span=5).mean()
+    ema_diff = ema.diff()
 
-    change = df['close'].diff()
-    up = change.clip(lower=0).rolling(length).mean()
-    down = -change.clip(upper=0).rolling(length).mean()
-    rsi = 100 - (100 / (1 + up / down))
-    mfi = money_flow_index(df, length)
-    rmi = (rsi + mfi) / 2
+    positive = (rmi.shift(1) < 66) & (rmi > 66) & (rmi > 30) & (ema_diff > 0)
+    negative = (rmi < 30) & (ema_diff < 0)
 
-    ema5 = df['close'].ewm(span=5).mean()
-    prev_rmi = rmi.shift(1)
-
-    buy = (prev_rmi < pmom) & (rmi > pmom) & (rmi > nmom) & (ema5.diff() > 0)
-    sell = (rmi < nmom) & (ema5.diff() < 0)
-
-    if buy.iloc[-1]:
+    if positive.iloc[-1]:
         return "AL"
-    elif sell.iloc[-1]:
+    elif negative.iloc[-1]:
         return "SAT"
     else:
         return "BEKLE"
 
-def analyze_signals(symbol, interval):
+# RSI Swing sinyali (trend yapısı)
+def get_rsi_swing(df, rsi_len=7, overbought=70, oversold=30):
+    rsi = calculate_rsi(df['close'], rsi_len)
+    signal = "BEKLE"
+
+    if rsi.iloc[-2] <= oversold and rsi.iloc[-1] > oversold:
+        if df['low'].iloc[-1] > df['low'].iloc[-2]:
+            signal = "AL"
+
+    elif rsi.iloc[-2] >= overbought and rsi.iloc[-1] < overbought:
+        if df['high'].iloc[-1] < df['high'].iloc[-2]:
+            signal = "SAT"
+
+    return signal
+
+# Zaman dilimi eşleşmesi
+timeframe_map = {
+    "1": Interval.in_1_minute,
+    "5": Interval.in_5_minute
+}
+
+# Ana analiz fonksiyonu
+def analyze_signals(symbol: str, tf_str: str = "1", manual=False):
     try:
-        df = tv.get_hist(symbol=symbol, exchange='BINANCE', interval=get_interval(interval), n_bars=100)
-        if df is None or df.empty:
+        interval = timeframe_map.get(tf_str, Interval.in_1_minute)
+        df = tv.get_hist(symbol=symbol, exchange="MEXC", interval=interval, n_bars=200)
+        if df is None or len(df) < 20:
+            return "Veri alınamadı."
+
+        df = df.dropna()
+
+        rsi_signal = get_rsi_swing(df)
+        rmi_signal = get_rmi_sniper(df)
+
+        signal_key = f"{symbol}_{tf_str}"
+        previous_signal = last_signals.get(signal_key, "BEKLE")
+        combined_signal = "BEKLE"
+
+        if rsi_signal == rmi_signal and rsi_signal in ["AL", "SAT"]:
+            combined_signal = rsi_signal
+        elif rsi_signal in ["AL", "SAT"] or rmi_signal in ["AL", "SAT"]:
+            combined_signal = "BEKLE"
+
+        # Sadece sinyal değiştiyse dön
+        if not manual:
+            if previous_signal != combined_signal:
+                last_signals[signal_key] = combined_signal
+                return f"<b>{symbol} ({tf_str}dk)</b>\n🧠 RSI Swing: {rsi_signal}\n📊 RMI Trend Sniper: {rmi_signal}\n📢 Sinyal: <b>{combined_signal}</b>"
             return None
-
-        rsi_result = rsi_swing(df)
-        rmi_result = rmi_trend_sniper(df)
-
-        if rsi_result == "AL" and rmi_result == "AL":
-            return "AL"
-        elif rsi_result == "SAT" and rmi_result == "SAT":
-            return "SAT"
         else:
-            return "BEKLE"
+            return f"<b>{symbol} ({tf_str}dk)</b>\n🧠 RSI Swing: {rsi_signal}\n📊 RMI Trend Sniper: {rmi_signal}\n📢 Sinyal: <b>{combined_signal}</b>"
 
     except Exception as e:
-        print(f"analyze_signals HATA: {e}")
-        return None
-
-
-# Yardımcı fonksiyonlar
-def ta_rsi(series, period):
-    delta = series.diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
-    avg_gain = gain.ewm(com=(period - 1), min_periods=period).mean()
-    avg_loss = loss.ewm(com=(period - 1), min_periods=period).mean()
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
-
-def money_flow_index(df, period):
-    typical_price = (df['high'] + df['low'] + df['close']) / 3
-    money_flow = typical_price * df['volume']
-    pos_flow = []
-    neg_flow = []
-
-    for i in range(1, len(typical_price)):
-        if typical_price[i] > typical_price[i - 1]:
-            pos_flow.append(money_flow[i])
-            neg_flow.append(0)
-        else:
-            pos_flow.append(0)
-            neg_flow.append(money_flow[i])
-
-    pos_mf = pd.Series(pos_flow).rolling(window=period).sum()
-    neg_mf = pd.Series(neg_flow).rolling(window=period).sum()
-    mfi = 100 * (pos_mf / (pos_mf + neg_mf))
-    mfi = mfi.reindex(df.index, method='pad')
-    return mfi
+        return f"Hata: {str(e)}"
