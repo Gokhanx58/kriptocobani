@@ -1,5 +1,3 @@
-# analyzer.py
-
 import pandas as pd
 import numpy as np
 from ta.momentum import RSIIndicator
@@ -38,7 +36,7 @@ def calculate_rmi_trend_sniper(df):
     ema28 = df["Close"].ewm(span=28, adjust=False).mean()
     ema_diff = ema14 - ema28
 
-    rmi = rsi  # Yalınlaştırılmış hali
+    rmi = rsi
     positive = (rmi.shift(1) < 66) & (rmi > 66) & (rmi > 30) & (ema_diff > 0)
     negative = (rmi < 30) & (ema_diff < 0)
 
@@ -61,7 +59,6 @@ async def analyze_signals(symbol: str, interval: str):
             final_signal = "BEKLE"
 
         return final_signal, rsi_result, rmi_result
-
     except Exception as e:
         print(f"[analyzer] Hata: {e}")
         return "BEKLE", "BEKLE", "BEKLE"
