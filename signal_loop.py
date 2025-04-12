@@ -1,29 +1,41 @@
-# signal_loop.py
-
 import asyncio
 from rsi_rmi_analyzer import analyze_signals
-from telegram import Bot
-from config import CHANNEL_ID, TELEGRAM_TOKEN
+from telegram_send import send_signal_to_channel
 
-coin_pairs = ["BTCUSDT", "ETHUSDT", "AVAXUSDT", "SOLUSDT", "SUIUSDT"]
-timeframes = ["1m", "5m"]
+symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]
+intervals = ["1m", "5m"]
 
-bot = Bot(token=TELEGRAM_TOKEN)
-
-# Son gönderilen sinyalleri tutan bellek
-last_signals = {}
+# Daha önce gönderilen sinyalleri takip etmek için
+previous_signals = {}
 
 async def start_signal_loop():
     while True:
-        for symbol in coin_pairs:
-            for interval in timeframes:
-                try:
-                    result = await analyze_signals(symbol, interval, manual=False)
+        try:
+            for symbol in symbols:
+                for interval in intervals:
                     key = f"{symbol}_{interval}"
-                    if result and result != last_signals.get(key):
-                        last_signals[key] = result
-                        await bot.send_message(chat_id=CHANNEL_ID, text=f"{symbol} - {interval} sinyali: {result}")
-                    await asyncio.sleep(3)  # Her sembol arası gecikme
-                except Exception as e:
-                    print(f"Hata oluştu: {e}")
-        await asyncio.sleep(180)  # Tüm döngü 3 dakikada bir tekrar eder
+                    try:
+                        signal = await analyze_signals(symbol, interval)
+                        # Eğer hiç sinyal alınamazsa, gönderme
+                        if signal is None:
+                            continue
+
+                        # Önceki sinyal ile aynıysa mesaj gönderme
+                        if previous_signals.get(key) == signal:
+                            continue
+
+                        # Sinyal değişmişse, güncelle ve mesaj gönder
+                        previous_signals[key] = signal
+                        await send_signal_to_channel(symbol, interval, signal)
+
+                        await asyncio.sleep(3)  # Her bir analiz arasında 3 sn bekle (spam önlemi)
+
+                    except Exception as e:
+                        print(f"{symbol} - {interval} analiz hatası: {e}")
+                        continue
+
+            await asyncio.sleep(180)  # 3 dakikada bir sinyalleri kontrol et
+
+        except Exception as e:
+            print(f"Genel döngü hatası: {e}")
+            await asyncio.sleep(180)
