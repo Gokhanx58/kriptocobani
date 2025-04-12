@@ -1,13 +1,25 @@
 # telegram_send.py
 
-from telegram import Bot
+import requests
 
 BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
-CHANNEL_ID = "@GoKriptoLine"  # Kanal kullanıcı adı
+CHANNEL_ID = "@GoKriptoLine"
 
-bot = Bot(token=BOT_TOKEN)
+def send_signal_message(symbol, interval, rsi_sinyal, rmi_sinyal, sonuc):
+    emoji_map = {"AL": "🟢", "SAT": "🔴", "BEKLE": "⏸️"}
+    mesaj = (
+        f"📉 *{symbol}* | ⏱ *{interval}*\n"
+        f"🧠 RSI Swing: `{rsi_sinyal}`\n"
+        f"🎯 RMI Trend Sniper: `{rmi_sinyal}`\n"
+        f"\n{emoji_map.get(sonuc, '')} *Sinyal:* {sonuc}"
+    )
 
-async def send_signal_to_channel(symbol, interval, message):
-    interval_text = interval.upper()
-    text = f"📊 *{symbol}* - *{interval_text}*\n\n{message}"
-    await bot.send_message(chat_id=CHANNEL_ID, text=text, parse_mode="Markdown")
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": CHANNEL_ID,
+        "text": mesaj,
+        "parse_mode": "Markdown"
+    }
+
+    response = requests.post(url, json=payload)
+    return response.json()
