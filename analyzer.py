@@ -1,8 +1,9 @@
 import pandas as pd
+import numpy as np
 from ta.momentum import RSIIndicator
 from tvDatafeed import TvDatafeed
 
-# Login'li giriş
+# Girişli tvdatafeed
 tv = TvDatafeed(username='marsticaret1', password='8690Yn678690')
 
 def get_data(symbol, interval, n_bars=100):
@@ -17,18 +18,21 @@ def calculate_rsi_swing(df):
     df["sinyal"] = None
 
     for i in range(1, len(df)):
-        if rsi.iloc[i - 1] < 30 and rsi.iloc[i] > 30:
-            df.loc[df.index[i], "sinyal"] = "HL"
-        elif rsi.iloc[i - 1] > 70 and rsi.iloc[i] < 70:
-            df.loc[df.index[i], "sinyal"] = "LH"
+        prev = rsi.iloc[i - 1]
+        curr = rsi.iloc[i]
+        label = None
+        if prev < 30 and curr > 30:
+            label = "HL"
+        elif prev > 70 and curr < 70:
+            label = "LH"
+        df.loc[df.index[i], "sinyal"] = label
 
-    son_sinyal = df["sinyal"].dropna().iloc[-1] if not df["sinyal"].dropna().empty else None
-    if son_sinyal == "HL":
+    last_signal = df["sinyal"].dropna().iloc[-1] if not df["sinyal"].dropna().empty else None
+    if last_signal in ["HL", "LL"]:
         return "AL"
-    elif son_sinyal == "LH":
+    elif last_signal in ["LH", "HH"]:
         return "SAT"
-    else:
-        return "BEKLE"
+    return "BEKLE"
 
 def calculate_rmi_trend_sniper(df):
     rsi = RSIIndicator(close=df["Close"], window=14).rsi()
@@ -43,8 +47,7 @@ def calculate_rmi_trend_sniper(df):
         return "AL"
     elif negative.iloc[-1]:
         return "SAT"
-    else:
-        return "BEKLE"
+    return "BEKLE"
 
 async def analyze_signals(symbol: str, interval: str):
     try:
