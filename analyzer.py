@@ -3,13 +3,11 @@ import numpy as np
 from ta.momentum import RSIIndicator
 from tvDatafeed import TvDatafeed
 
-# TradingView çerezleriyle girişli bağlantı
+# TradingView login çerezleriyle giriş
 tv = TvDatafeed(
     session='fm0j7ziifzup5jm6sa5h6nqf65iqcxgu',
     session_sign='v3:iz6molF7z3oCKrettxY7v1u1cSvcjCnPflkvM0Pst3E=',
     tv_ecuid='10a9a8e3-be0d-4835-b7ce-bb51e801ff9b'
-)
-
 )
 
 def get_data(symbol, interval, n_bars=100):
