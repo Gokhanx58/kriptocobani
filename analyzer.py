@@ -2,9 +2,10 @@ import pandas as pd
 from ta.momentum import RSIIndicator
 from tvDatafeed import TvDatafeed
 
-tv = TvDatafeed()
+# Login'li giriş
+tv = TvDatafeed(username='marsticaret1', password='8690Yn678690')
 
-def get_data(symbol, interval, n_bars=500):
+def get_data(symbol, interval, n_bars=100):
     df = tv.get_hist(symbol=symbol, exchange='BINANCE', interval=interval, n_bars=n_bars)
     df = df.dropna()
     df.rename(columns={"close": "Close"}, inplace=True)
@@ -13,7 +14,7 @@ def get_data(symbol, interval, n_bars=500):
 def calculate_rsi_swing(df):
     rsi = RSIIndicator(close=df["Close"], window=7).rsi()
     df["RSI"] = rsi
-    df["sinyal"] = ""
+    df["sinyal"] = None
 
     for i in range(1, len(df)):
         if rsi.iloc[i - 1] < 30 and rsi.iloc[i] > 30:
@@ -21,10 +22,10 @@ def calculate_rsi_swing(df):
         elif rsi.iloc[i - 1] > 70 and rsi.iloc[i] < 70:
             df.loc[df.index[i], "sinyal"] = "LH"
 
-    son_sinyal = df["sinyal"].iloc[-1]
-    if son_sinyal in ["HL", "LL"]:
+    son_sinyal = df["sinyal"].dropna().iloc[-1] if not df["sinyal"].dropna().empty else None
+    if son_sinyal == "HL":
         return "AL"
-    elif son_sinyal in ["LH", "HH"]:
+    elif son_sinyal == "LH":
         return "SAT"
     else:
         return "BEKLE"
