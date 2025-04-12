@@ -1,5 +1,3 @@
-# signal_loop.py
-
 import asyncio
 from analyzer import analyze_signals
 from telegram_send import send_telegram_message
@@ -20,15 +18,13 @@ async def start_signal_loop():
                     if final_signal != last_signals.get(key):
                         last_signals[key] = final_signal
 
-                        message = f"<b>{symbol} ({interval})</b>\n"
-                        message += f"RSI Swing: <b>{rsi_result}</b>\n"
-                        message += f"RMI Trend: <b>{rmi_result}</b>\n"
-                        message += f"Sonuç: <b>{final_signal}</b>"
+                        message = f"📉 <b>{symbol} ({interval})</b>\n"
+                        message += f"✅ RSI Swing: <b>{rsi_result}</b>\n"
+                        message += f"✅ RMI Trend: <b>{rmi_result}</b>\n"
+                        message += f"📢 Sonuç: <b>{final_signal}</b>"
 
                         await send_telegram_message(message)
-                        await asyncio.sleep(3)  # çakışmayı engelle
-
+                        await asyncio.sleep(3)
                 except Exception as e:
-                    print(f"[signal_loop] Hata ({symbol} - {interval}):", e)
-
-        await asyncio.sleep(180)  # Her 3 dakikada bir tekrar
+                    print(f"[signal_loop] Hata ({symbol}-{interval}): {e}")
+        await asyncio.sleep(180)
