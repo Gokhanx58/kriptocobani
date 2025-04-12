@@ -1,26 +1,13 @@
 # main.py
 
 import asyncio
-import nest_asyncio
-from telegram.ext import ApplicationBuilder, CommandHandler
-from handlers import analiz_komutu
 from signal_loop import start_signal_loop
 
-BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
-
-nest_asyncio.apply()
-
 async def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-
-    # Kullanıcıdan gelen analiz komutlarını işler
-    app.add_handler(CommandHandler("analiz", analiz_komutu))
-
-    # Arka planda sinyal kontrol döngüsünü başlatır
-    asyncio.create_task(start_signal_loop())
-
-    print("Bot çalışıyor...")
-    await app.run_polling()
+    print("Sinyal kontrol sistemi başlatılıyor...")
+    while True:
+        await start_signal_loop()
+        await asyncio.sleep(180)  # 3 dakika bekle
 
 if __name__ == "__main__":
     asyncio.run(main())
