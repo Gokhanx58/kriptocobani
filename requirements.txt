@@ -2,5 +2,5 @@ python-telegram-bot==20.3
 pandas==1.5.3
 numpy==1.24.4
 ta==0.10.2
-git+https://github.com/n0madic/tvdatafeed.git
+https://github.com/n0madic/tvdatafeed/archive/refs/heads/master.zip
 nest_asyncio==1.6.0
