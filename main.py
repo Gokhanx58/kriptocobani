@@ -1,5 +1,3 @@
-# main.py
-
 import asyncio
 import nest_asyncio
 from telegram.ext import ApplicationBuilder, CommandHandler
@@ -12,12 +10,8 @@ nest_asyncio.apply()
 
 async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
     app.add_handler(CommandHandler("analiz", analiz_komutu))
-
-    # Sinyal döngüsünü başlat
-    asyncio.create_task(start_signal_loop())
-
+    asyncio.create_task(start_signal_loop())  # Otomatik sinyal döngüsü
     print("Bot çalışıyor...")
     await app.run_polling()
 
