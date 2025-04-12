@@ -1,31 +1,24 @@
+# signal_loop.py
+
 import asyncio
-from rsi_rmi_analyzer import analyze_signals
+from analyzer import analyze_signals
 from telegram_send import send_signal_to_channel
 
-# Sinyal takibi yapılacak semboller ve zaman dilimleri
-symbols = ["BTCUSDT", "ETHUSDT", "AVAXUSDT", "SOLUSDT", "SUIUSDT"]
+symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]
 intervals = ["1", "5"]
+last_sent_signals = {}
 
-# Önceki sinyalleri saklamak için sözlük
-previous_signals = {}
-
-# Sinyal döngüsünü başlatan asenkron fonksiyon
 async def start_signal_loop():
     while True:
-        for symbol in symbols:
-            for interval in intervals:
-                try:
-                    result = await analyze_signals(symbol, interval)
-
+        try:
+            for symbol in symbols:
+                for interval in intervals:
                     key = f"{symbol}_{interval}"
-
-                    if result != previous_signals.get(key):
-                        previous_signals[key] = result
-                        await send_signal_to_channel(symbol, interval, result)
-
-                    await asyncio.sleep(3)  # Her sinyal arasında 3 saniye bekle (spam engeli)
-
-                except Exception as e:
-                    print(f"{symbol} {interval} analiz hatası: {e}")
-
-        await asyncio.sleep(180)  # Tüm döngü bittiğinde 3 dakika bekle
+                    result = await analyze_signals(symbol, interval)
+                    if result and result != last_sent_signals.get(key):
+                        await send_signal_to_channel(result)
+                        last_sent_signals[key] = result
+                    await asyncio.sleep(3)
+        except Exception as e:
+            print(f"Hata oluştu: {e}")
+        await asyncio.sleep(30)
