@@ -4,4 +4,4 @@ numpy==1.24.4
 ta==0.10.2
 nest_asyncio==1.6.0
 httpx==0.24.1
-git+https://github.com/maliMirkec/tvdatafeed.git
+git+https://github.com/gokryptobot/tvdatafeed.git
