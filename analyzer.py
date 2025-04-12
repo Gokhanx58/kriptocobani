@@ -21,7 +21,7 @@ def rsi_swing(df, rsi_length=7, rsi_ob=70, rsi_os=30):
         if rsi_val >= rsi_ob:
             if laststate == "OS":
                 label = "HH" if last_label_price is not None and high > last_label_price else "LH"
-                df["sinyal"].iloc[i] = label
+                df.loc[df.index[i], "sinyal"] = label
                 last_label_price = high
             hh = max(hh or high, high)
             laststate = "OB"
@@ -29,7 +29,7 @@ def rsi_swing(df, rsi_length=7, rsi_ob=70, rsi_os=30):
         elif rsi_val <= rsi_os:
             if laststate == "OB":
                 label = "LL" if last_label_price is not None and low < last_label_price else "HL"
-                df["sinyal"].iloc[i] = label
+                df.loc[df.index[i], "sinyal"] = label
                 last_label_price = low
             ll = min(ll or low, low)
             laststate = "OS"
