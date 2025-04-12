@@ -4,7 +4,7 @@ from tvDatafeed import TvDatafeed
 
 tv = TvDatafeed()
 
-def get_data(symbol, interval, n_bars=100):
+def get_data(symbol, interval, n_bars=500):
     df = tv.get_hist(symbol=symbol, exchange='BINANCE', interval=interval, n_bars=n_bars)
     df = df.dropna()
     df.rename(columns={"close": "Close"}, inplace=True)
