@@ -1,5 +1,3 @@
-# main.py
-
 import asyncio
 import nest_asyncio
 from signal_loop import start_signal_loop
