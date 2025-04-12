@@ -1,6 +1,5 @@
 import requests
 
-# Telegram bot ayarları
 BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
 CHANNEL_ID = "@GoKriptoLine"
 
@@ -11,10 +10,5 @@ def send_telegram_message(message: str):
         "text": message,
         "parse_mode": "HTML"
     }
-
-    try:
-        response = requests.post(url, data=payload)
-        if response.status_code != 200:
-            print(f"Telegram mesajı gönderilemedi: {response.text}")
-    except Exception as e:
-        print(f"Telegram mesaj hatası: {e}")
+    response = requests.post(url, data=payload)
+    print(f"[Telegram] Status Code: {response.status_code}, Response: {response.text}")
