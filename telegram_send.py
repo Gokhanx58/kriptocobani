@@ -1,25 +1,20 @@
-# telegram_send.py
-
 import requests
 
+# Telegram bot ayarları
 BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
 CHANNEL_ID = "@GoKriptoLine"
 
-def send_signal_message(symbol, interval, rsi_sinyal, rmi_sinyal, sonuc):
-    emoji_map = {"AL": "🟢", "SAT": "🔴", "BEKLE": "⏸️"}
-    mesaj = (
-        f"📉 *{symbol}* | ⏱ *{interval}*\n"
-        f"🧠 RSI Swing: `{rsi_sinyal}`\n"
-        f"🎯 RMI Trend Sniper: `{rmi_sinyal}`\n"
-        f"\n{emoji_map.get(sonuc, '')} *Sinyal:* {sonuc}"
-    )
-
+def send_telegram_message(message: str):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
         "chat_id": CHANNEL_ID,
-        "text": mesaj,
-        "parse_mode": "Markdown"
+        "text": message,
+        "parse_mode": "HTML"
     }
 
-    response = requests.post(url, json=payload)
-    return response.json()
+    try:
+        response = requests.post(url, data=payload)
+        if response.status_code != 200:
+            print(f"Telegram mesajı gönderilemedi: {response.text}")
+    except Exception as e:
+        print(f"Telegram mesaj hatası: {e}")
