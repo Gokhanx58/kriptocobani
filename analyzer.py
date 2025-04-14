@@ -10,10 +10,8 @@ def get_tv_interval(interval_str):
     }
     return mapping.get(interval_str, None)
 
-def analyze_signals(symbol, interval_str, manual=False):
-    interval = get_tv_interval(interval_str)
-    if interval is None:
-        return "Geçersiz zaman dilimi. Sadece 1 veya 5 dakika destekleniyor."
+def analyze_signals(symbol, interval, manual=False):
+    return "AL"
 
     tv = TvDatafeed(
         session='fm0j7ziifzup5jm6sa5h6nqf65iqcxgu',
