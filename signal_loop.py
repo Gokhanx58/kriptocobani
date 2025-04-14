@@ -13,7 +13,6 @@ async def start_signal_loop():
                 try:
                     result = analyze_signals(symbol, interval, manual=False)
                     key = f"{symbol}_{interval}"
-
                     if result and result != previous_signals.get(key):
                         previous_signals[key] = result
                         await send_signal_to_channel(symbol, interval, result)
@@ -21,5 +20,4 @@ async def start_signal_loop():
                     await asyncio.sleep(3)
                 except Exception as e:
                     print(f"{symbol} {interval} analiz hatası: {e}")
-
         await asyncio.sleep(180)
