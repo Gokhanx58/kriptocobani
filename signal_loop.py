@@ -1,36 +1,25 @@
-# signal_loop.py
-
 import asyncio
 from analyzer import analyze_signals
-from telegram_send import send_telegram_message
+from telegram_send import send_signal_to_channel
 
-SYMBOLS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]
-INTERVALS = ["1m", "5m"]
-
-last_signals = {}
+symbols = ["BTCUSDT", "ETHUSDT", "AVAXUSDT", "SOLUSDT", "SUIUSDT"]
+intervals = ["1", "5"]
+previous_signals = {}
 
 async def start_signal_loop():
     while True:
-        for symbol in SYMBOLS:
-            for interval in INTERVALS:
+        for symbol in symbols:
+            for interval in intervals:
                 try:
+                    result = analyze_signals(symbol, interval, manual=False)
                     key = f"{symbol}_{interval}"
-                    final_signal, rsi_result, rmi_result = await analyze_signals(symbol, interval)
 
-                    if final_signal and final_signal != last_signals.get(key):
-                        last_signals[key] = final_signal
+                    if result and result != previous_signals.get(key):
+                        previous_signals[key] = result
+                        await send_signal_to_channel(symbol, interval, result)
 
-                        message = (
-                            f"📉 <b>{symbol} ({interval})</b>\n"
-                            f"✅ RSI Swing: <b>{rsi_result}</b>\n"
-                            f"✅ RMI Trend: <b>{rmi_result}</b>\n"
-                            f"📢 Sonuç: <b>{final_signal}</b>"
-                        )
-
-                        await send_telegram_message(message)
-                        await asyncio.sleep(3)  # Çakışmayı engelle
-
+                    await asyncio.sleep(3)
                 except Exception as e:
-                    print(f"[signal_loop] Hata ({symbol} - {interval}):", e)
+                    print(f"{symbol} {interval} analiz hatası: {e}")
 
-        await asyncio.sleep(180)  # Her 3 dakikada bir döngü
+        await asyncio.sleep(180)
