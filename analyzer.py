@@ -1,4 +1,4 @@
-from tvDatafeed import TvDatafeed, Interval
+from tvdatafeed import TvDatafeed, Interval
 import pandas as pd
 
 previous_signal = {}
