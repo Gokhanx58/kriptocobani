@@ -10,14 +10,16 @@ def get_tv_interval(interval_str):
     }
     return mapping.get(interval_str, None)
 
-def analyze_signals(symbol, interval, manual=False):
-    return "AL"
-
+def analyze_signals(symbol, interval_str, manual=False):
     tv = TvDatafeed(
         session='fm0j7ziifzup5jm6sa5h6nqf65iqcxgu',
         session_sign='v3:iz6molF7z3oCKrettxY7v1u1cSvcjCnPflkvM0Pst3E=',
         tv_ecuid='10a9a8e3-be0d-4835-b7ce-bb51e801ff9b'
     )
+
+    interval = get_tv_interval(interval_str)
+    if interval is None:
+        return "Geçersiz zaman aralığı"
 
     df = tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval, n_bars=150)
     if df is None or df.empty or len(df) < 20:
@@ -40,7 +42,6 @@ def analyze_signals(symbol, interval, manual=False):
     in_order_block = (ob_low * (1 - tolerance)) <= price <= (ob_high * (1 + tolerance))
 
     signal = "BEKLE"
-
     if prev_price < high_level and price > high_level and in_order_block:
         signal = "AL"
     elif prev_price > low_level and price < low_level and in_order_block:
@@ -48,7 +49,7 @@ def analyze_signals(symbol, interval, manual=False):
 
     key = f"{symbol}_{interval_str}"
     if not manual and previous_signal.get(key) == signal:
-        return "AL"  # veya "SAT", "BEKLE"
+        return "BEKLE"
 
     previous_signal[key] = signal
-    return signal
+    return signal, price
