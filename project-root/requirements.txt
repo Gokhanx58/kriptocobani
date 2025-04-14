@@ -1,4 +1,0 @@
-python-telegram-bot==20.3
-pandas==1.5.3
-ta==0.10.2
-git+https:
