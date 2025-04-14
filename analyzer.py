@@ -1,3 +1,5 @@
+# analyzer.py (Gelişmiş - CHoCH + Order Block + FVG + Fiyat bilgisi)
+
 from tvdatafeed import TvDatafeed, Interval
 import pandas as pd
 
@@ -11,19 +13,19 @@ def get_tv_interval(interval_str):
     return mapping.get(interval_str, None)
 
 def analyze_signals(symbol, interval_str, manual=False):
+    interval = get_tv_interval(interval_str)
+    if interval is None:
+        return None, None  # Geçersiz zaman dilimi
+
     tv = TvDatafeed(
         session='fm0j7ziifzup5jm6sa5h6nqf65iqcxgu',
         session_sign='v3:iz6molF7z3oCKrettxY7v1u1cSvcjCnPflkvM0Pst3E=',
         tv_ecuid='10a9a8e3-be0d-4835-b7ce-bb51e801ff9b'
     )
 
-    interval = get_tv_interval(interval_str)
-    if interval is None:
-        return "Geçersiz zaman aralığı"
-
     df = tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval, n_bars=150)
     if df is None or df.empty or len(df) < 20:
-        return "Veri alınamadı."
+        return None, None
 
     df['high_level'] = df['high'].rolling(window=20).max()
     df['low_level'] = df['low'].rolling(window=20).min()
@@ -38,18 +40,21 @@ def analyze_signals(symbol, interval_str, manual=False):
     ob_low = df['ob_lower'].iloc[-2]
 
     tolerance = 0.002  # %0.2 tolerans
-
     in_order_block = (ob_low * (1 - tolerance)) <= price <= (ob_high * (1 + tolerance))
 
     signal = "BEKLE"
+    confidence = "Normal"
+
     if prev_price < high_level and price > high_level and in_order_block:
         signal = "AL"
+        confidence = "Güçlü AL" if (price - high_level) / price > 0.001 else "AL"
     elif prev_price > low_level and price < low_level and in_order_block:
         signal = "SAT"
+        confidence = "Güçlü SAT" if (low_level - price) / price > 0.001 else "SAT"
 
     key = f"{symbol}_{interval_str}"
     if not manual and previous_signal.get(key) == signal:
-        return "BEKLE"
+        return None, price
 
     previous_signal[key] = signal
     return signal, price
