@@ -1,4 +1,4 @@
-# telegram_send.py (gelişmiş mesaj yapısıyla)
+# telegram_send.py (güncellenmiş - fiyat bilgisiyle birlikte)
 
 from telegram import Bot
 
@@ -6,15 +6,15 @@ BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
 CHANNEL_ID = "@GoKriptoLine"
 bot = Bot(token=BOT_TOKEN)
 
-async def send_signal_to_channel(symbol, interval, signal):
+async def send_signal_to_channel(symbol, interval, signal, price):
     emoji = "✅" if signal == "AL" else "❌" if signal == "SAT" else "⏳"
     detay = "Yükseliş bekleniyor" if signal == "AL" else "Geri çekilme bekleniyor" if signal == "SAT" else "Sinyal bekleniyor"
+    sistem_durum = "Güçlü AL" if signal == "AL" else "Güçlü SAT" if signal == "SAT" else "Kararsız"
 
     mesaj = (
-        f"🪙 Coin: {symbol}\n"
-        f"⏱️ Zaman: {interval}m\n"
-        f"📊 Sistem: CHoCH + Order Block + FVG\n"
-        f"🔍 Yön: {signal}\n"
+        f"🪙 {symbol} | ⏱️ {interval}m\n"
+        f"💰 Fiyat: {price:.2f} USDT\n"
+        f"📊 Sistem Durumu: {sistem_durum}\n"
         f"📌 Sinyal: {emoji} {signal} → {detay}"
     )
 
