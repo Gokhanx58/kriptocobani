@@ -1,4 +1,4 @@
-# telegram_send.py (renkli, sade, fiyatlı)
+# telegram_send.py (renkli, sade, fiyatlı + log destekli)
 
 from telegram import Bot
 
@@ -25,6 +25,7 @@ async def send_signal_to_channel(symbol, interval, signal, price):
     )
 
     try:
+        print(f"[GÖNDERİLİYOR] {symbol} {interval}m mesaj: {mesaj}")
         await bot.send_message(chat_id=CHANNEL_ID, text=mesaj)
     except Exception as e:
         print(f"Telegram gönderim hatası: {e}")
