@@ -1,9 +1,11 @@
+# analyzer.py
+
 import pandas as pd
 import numpy as np
 from ta.momentum import RSIIndicator
 from tvDatafeed import TvDatafeed
 
-# TradingView login çerezleriyle giriş
+# TradingView giriş bilgileri (cookie tabanlı)
 tv = TvDatafeed(
     session='fm0j7ziifzup5jm6sa5h6nqf65iqcxgu',
     session_sign='v3:iz6molF7z3oCKrettxY7v1u1cSvcjCnPflkvM0Pst3E=',
@@ -19,24 +21,21 @@ def get_data(symbol, interval, n_bars=100):
 def calculate_rsi_swing(df):
     rsi = RSIIndicator(close=df["Close"], window=7).rsi()
     df["RSI"] = rsi
-    df["sinyal"] = None
+    df["sinyal"] = ""
 
     for i in range(1, len(df)):
-        prev = rsi.iloc[i - 1]
-        curr = rsi.iloc[i]
-        label = None
-        if prev < 30 and curr > 30:
-            label = "HL"
-        elif prev > 70 and curr < 70:
-            label = "LH"
-        df.loc[df.index[i], "sinyal"] = label
+        if rsi.iloc[i - 1] < 30 and rsi.iloc[i] > 30:
+            df.loc[df.index[i], "sinyal"] = "HL"
+        elif rsi.iloc[i - 1] > 70 and rsi.iloc[i] < 70:
+            df.loc[df.index[i], "sinyal"] = "LH"
 
-    last_signal = df["sinyal"].dropna().iloc[-1] if not df["sinyal"].dropna().empty else None
-    if last_signal in ["HL", "LL"]:
+    son_sinyal = df["sinyal"].iloc[-1]
+    if son_sinyal in ["HL", "LL"]:
         return "AL"
-    elif last_signal in ["LH", "HH"]:
+    elif son_sinyal in ["LH", "HH"]:
         return "SAT"
-    return "BEKLE"
+    else:
+        return "BEKLE"
 
 def calculate_rmi_trend_sniper(df):
     rsi = RSIIndicator(close=df["Close"], window=14).rsi()
@@ -51,7 +50,8 @@ def calculate_rmi_trend_sniper(df):
         return "AL"
     elif negative.iloc[-1]:
         return "SAT"
-    return "BEKLE"
+    else:
+        return "BEKLE"
 
 async def analyze_signals(symbol: str, interval: str):
     try:
