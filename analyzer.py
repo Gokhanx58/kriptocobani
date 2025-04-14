@@ -50,7 +50,7 @@ def analyze_signals(symbol, interval_str, manual=False):
 
     key = f"{symbol}_{interval_str}"
     if not manual and previous_signal.get(key) == signal:
-        return None
+        return "AL"  # veya "SAT", "BEKLE"
 
     previous_signal[key] = signal
     return signal
