@@ -1,4 +1,4 @@
-# telegram_send.py (geçmiş sinyale göre karşılaştırmalı mesaj sistemi)
+# telegram_send.py (güncel, optimize edilmiş ve özelleştirilmiş mesaj yapısı)
 
 from telegram import Bot
 
@@ -19,14 +19,18 @@ async def send_signal_to_channel(symbol, interval, signal, price):
 
     emoji = "✅" if signal == "AL" else "❌" if signal == "SAT" else "⏳"
     detay = "Yükseliş bekleniyor" if signal == "AL" else "Geri çekilme bekleniyor" if signal == "SAT" else "Sinyal bekleniyor"
-    sistem_durum = "Güçlü AL" if signal == "AL" else "Güçlü SAT" if signal == "SAT" else "Kararsız"
+
+    # Sistem gücü yorumu
+    sistem_durum = "Güçlü AL" if signal == "AL" and "strong" in signal.lower() else \
+                    "Güçlü SAT" if signal == "SAT" and "strong" in signal.lower() else \
+                    signal  # AL veya SAT
 
     cikis_mesaji = f"🔁 Pozisyon değişimi!\n⛔ {onceki_sinyal} pozisyonundan çıkılıyor.\n\n" if onceki_sinyal in ["AL", "SAT"] else ""
 
     mesaj = (
         f"{cikis_mesaji}"
         f"🪙 {symbol} | ⏱️ {interval}m\n"
-        f"💰 Fiyat: {price:.2f} USDT\n"
+        f"💰 Sinyal Fiyatı: {price:.2f} USDT\n"
         f"📊 Sistem Durumu: {sistem_durum}\n"
         f"📌 Sinyal: {emoji} {signal} → {detay}"
     )
