@@ -1,12 +1,11 @@
 import asyncio
-import nest_asyncio
 from signal_loop import start_signal_loop
 
-nest_asyncio.apply()
-
 async def main():
-    print("Bot başlatılıyor...")
-    await start_signal_loop()
+    print("Sinyal kontrol sistemi başlatılıyor...")
+    while True:
+        await start_signal_loop()
+        await asyncio.sleep(180)
 
 if __name__ == "__main__":
     asyncio.run(main())
