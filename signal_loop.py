@@ -1,4 +1,4 @@
-# signal_loop.py (Güncel - Log destekli)
+# signal_loop.py (Güncel - Sadece sinyal değişiminde gönderim + fiyat bilgisi destekli)
 
 import asyncio
 from analyzer import analyze_signals
@@ -13,16 +13,18 @@ async def start_signal_loop():
         for symbol in symbols:
             for interval in intervals:
                 try:
-                    result = analyze_signals(symbol, interval, manual=False)
-                    print(f"\U0001F50D {symbol} {interval}m sonucu: {result}")
-                    key = f"{symbol}_{interval}"
+                    result, price = analyze_signals(symbol, interval, manual=False)
+                    if result is None:
+                        continue
 
-                    if result and result != previous_signals.get(key):
+                    key = f"{symbol}_{interval}"
+                    if previous_signals.get(key) != result:
                         previous_signals[key] = result
-                        await send_signal_to_channel(symbol, interval, result)
+                        await send_signal_to_channel(symbol, interval, result, price)
 
                     await asyncio.sleep(3)
+
                 except Exception as e:
                     print(f"❌ {symbol} {interval} analiz hatası: {e}")
 
-        await asyncio.sleep(180)  # 3 dakika bekle
+        await asyncio.sleep(180)  # 3 dakikada bir tam tarama
