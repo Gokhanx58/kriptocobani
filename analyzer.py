@@ -1,73 +1,43 @@
-# analyzer.py
-
+from tvDatafeed import TvDatafeed, Interval
 import pandas as pd
-import numpy as np
-from ta.momentum import RSIIndicator
-from tvDatafeed import TvDatafeed
 
-# TradingView giriş bilgileri (cookie tabanlı)
-tv = TvDatafeed(
-    session='fm0j7ziifzup5jm6sa5h6nqf65iqcxgu',
-    session_sign='v3:iz6molF7z3oCKrettxY7v1u1cSvcjCnPflkvM0Pst3E=',
-    tv_ecuid='10a9a8e3-be0d-4835-b7ce-bb51e801ff9b'
-)
+previous_signal = {}
 
-def get_data(symbol, interval, n_bars=100):
-    df = tv.get_hist(symbol=symbol, exchange='BINANCE', interval=interval, n_bars=n_bars)
-    df = df.dropna()
-    df.rename(columns={"close": "Close"}, inplace=True)
-    return df
+def get_tv_interval(interval_str):
+    mapping = {
+        "1": Interval.in_1_minute,
+        "5": Interval.in_5_minute,
+    }
+    return mapping.get(interval_str, None)
 
-def calculate_rsi_swing(df):
-    rsi = RSIIndicator(close=df["Close"], window=7).rsi()
-    df["RSI"] = rsi
-    df["sinyal"] = ""
+def analyze_signals(symbol, interval_str, manual=False):
+    interval = get_tv_interval(interval_str)
+    if interval is None:
+        return "Geçersiz zaman dilimi. Sadece 1 veya 5 dakika destekleniyor."
 
-    for i in range(1, len(df)):
-        if rsi.iloc[i - 1] < 30 and rsi.iloc[i] > 30:
-            df.loc[df.index[i], "sinyal"] = "HL"
-        elif rsi.iloc[i - 1] > 70 and rsi.iloc[i] < 70:
-            df.loc[df.index[i], "sinyal"] = "LH"
+    tv = TvDatafeed()
+    df = tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval, n_bars=200)
 
-    son_sinyal = df["sinyal"].iloc[-1]
-    if son_sinyal in ["HL", "LL"]:
-        return "AL"
-    elif son_sinyal in ["LH", "HH"]:
-        return "SAT"
-    else:
-        return "BEKLE"
+    if df is None or df.empty or len(df) < 20:
+        return "Veri alınamadı."
 
-def calculate_rmi_trend_sniper(df):
-    rsi = RSIIndicator(close=df["Close"], window=14).rsi()
-    ema14 = df["Close"].ewm(span=14, adjust=False).mean()
-    ema28 = df["Close"].ewm(span=28, adjust=False).mean()
-    ema_diff = ema14 - ema28
+    df['high_level'] = df['high'].rolling(window=20).max()
+    df['low_level'] = df['low'].rolling(window=20).min()
 
-    positive = (rsi.shift(1) < 66) & (rsi > 66) & (rsi > 30) & (ema_diff > 0)
-    negative = (rsi < 30) & (ema_diff < 0)
+    price = df['close'].iloc[-1]
+    prev_price = df['close'].iloc[-2]
+    high_level = df['high_level'].iloc[-2]
+    low_level = df['low_level'].iloc[-2]
 
-    if positive.iloc[-1]:
-        return "AL"
-    elif negative.iloc[-1]:
-        return "SAT"
-    else:
-        return "BEKLE"
+    signal = "BEKLE"
+    if prev_price < high_level and price > high_level:
+        signal = "AL"
+    elif prev_price > low_level and price < low_level:
+        signal = "SAT"
 
-async def analyze_signals(symbol: str, interval: str):
-    try:
-        df = get_data(symbol, interval)
-        rsi_result = calculate_rsi_swing(df)
-        rmi_result = calculate_rmi_trend_sniper(df)
+    key = f"{symbol}_{interval_str}"
+    if not manual and previous_signal.get(key) == signal:
+        return None
 
-        if rsi_result == rmi_result:
-            final_signal = rsi_result
-        elif rsi_result != "BEKLE" or rmi_result != "BEKLE":
-            final_signal = "BEKLE"
-        else:
-            final_signal = None
-
-        return final_signal, rsi_result, rmi_result
-
-    except Exception as e:
-        print(f"[analyzer] Hata: {e}")
-        return None, "BEKLE", "BEKLE"
+    previous_signal[key] = signal
+    return signal
