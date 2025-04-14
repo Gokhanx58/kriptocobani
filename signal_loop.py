@@ -1,5 +1,3 @@
-# signal_loop.py (Güncel - İlk çalıştırmada sinyal gönderimi açık)
-
 import asyncio
 from analyzer import analyze_signals
 from telegram_send import send_signal_to_channel
@@ -7,29 +5,19 @@ from telegram_send import send_signal_to_channel
 symbols = ["BTCUSDT", "ETHUSDT", "AVAXUSDT", "SOLUSDT", "SUIUSDT"]
 intervals = ["1", "5"]
 previous_signals = {}
-first_run = True  # İlk çalıştırma tetikleyicisi
 
 async def start_signal_loop():
-    global first_run
     while True:
         for symbol in symbols:
             for interval in intervals:
                 try:
-                    result, price = analyze_signals(symbol, interval, manual=False)
-                    if result is None:
-                        continue
-
+                    result = analyze_signals(symbol, interval, manual=False)
                     key = f"{symbol}_{interval}"
-
-                    # İlk çalıştırmadaysa her durumda gönder
-                    if first_run or previous_signals.get(key) != result:
+                    if result and result != previous_signals.get(key):
                         previous_signals[key] = result
-                        await send_signal_to_channel(symbol, interval, result, price)
+                        await send_signal_to_channel(symbol, interval, result)
 
                     await asyncio.sleep(3)
-
                 except Exception as e:
-                    print(f"❌ {symbol} {interval} analiz hatası: {e}")
-
-        first_run = False
+                    print(f"{symbol} {interval} analiz hatası: {e}")
         await asyncio.sleep(180)
