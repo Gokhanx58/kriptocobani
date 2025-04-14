@@ -58,3 +58,6 @@ def analyze_signals(symbol, interval_str, manual=False):
 
     previous_signal[key] = signal
     return confidence, price
+
+print(f"[ANALİZ] {symbol} {interval_str} sonucu: {confidence}, fiyat: {price}")
+
