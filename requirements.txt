@@ -3,3 +3,4 @@ pandas==1.5.3
 numpy==1.24.4
 ta==0.10.2
 nest_asyncio==1.6.0
+requests==2.32.3
