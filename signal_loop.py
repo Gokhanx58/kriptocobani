@@ -1,45 +1,41 @@
+# signal_loop.py
+
 import asyncio
 from analyzer import analyze_signals
-from telegram import Bot
+import time
 
-BOT_TOKEN = "7677308602:AAHH7vloPaQ7PqgFdBnJ2DKYy6sjJ5iqaYE"
-CHANNEL_ID = "@GokriptoHan"
-bot = Bot(token=BOT_TOKEN)
+symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "AVAXUSDT", "SUIUSDT"]
+intervals = [1, 5]  # 1m ve 5m
 
-symbols = ["BTCUSDT", "ETHUSDT", "AVAXUSDT", "SOLUSDT", "SUIUSDT"]
-intervals = [1, 5]  # dakikalık
-
-async def send_message(symbol, interval, signal, entry_price, current_price):
-    emoji = "✅" if "AL" in signal else "❌" if "SAT" in signal else "⚠️"
-    yorum = {
-        "GÜÇLÜ AL": "Yükseliş beklentisi çok güçlü",
-        "AL": "Yükseliş bekleniyor",
-        "GÜÇLÜ SAT": "Düşüş baskısı yüksek",
-        "SAT": "Geri çekilme bekleniyor",
-        "BEKLE": "Sinyal oluşumu bekleniyor",
-    }.get(signal.replace("KAPAT → ", ""), "Analiz ediliyor...")
-
-    mesaj = (
-        f"🪙 Coin: {symbol}\n"
-        f"⏱️ Zaman: {interval}m\n"
-        f"📊 Sistem: CHoCH + Order Block + FVG\n"
-        f"📌 Sinyal: {emoji} {signal} → {yorum}\n"
-        f"🎯 Sinyal Fiyatı: {entry_price:.2f}\n"
-        f"📉 Güncel Fiyat: {current_price:.2f}"
-    )
-
-    try:
-        print(f"[Telegram] Gönderiliyor: {signal} - {symbol}-{interval}m")
-        await bot.send_message(chat_id=CHANNEL_ID, text=mesaj)
-    except Exception as e:
-        print(f"[Telegram Hata] {e}")
+# Sinyal durumu kaydı
+last_signals = {}
 
 async def start_signal_loop():
+    print("✅ Sinyal döngüsü başladı.")
     while True:
         for symbol in symbols:
             for interval in intervals:
-                signal, entry, now = analyze_signals(symbol, interval)
-                if signal:
-                    await send_message(symbol, interval, signal, entry, now)
-                await asyncio.sleep(2)  # Coinler arası bekleme
-        await asyncio.sleep(180)  # 3 dakikada bir tekrar döngü
+                try:
+                    print(f"🔍 Analiz ediliyor: {symbol}-{interval}m")
+                    signal, signal_price, current_price = analyze_signals(symbol, interval)
+
+                    key = f"{symbol}_{interval}"
+                    prev_signal = last_signals.get(key)
+
+                    if signal != prev_signal:
+                        if prev_signal and prev_signal in ["AL", "GÜÇLÜ AL", "SAT", "GÜÇLÜ SAT"]:
+                            from tvdatafeed.main import send_signal_to_channel
+                            await send_signal_to_channel(symbol, interval, f"İŞLEMİ KAPAT ({prev_signal})", current_price)
+
+                        if signal in ["AL", "GÜÇLÜ AL", "SAT", "GÜÇLÜ SAT"]:
+                            from tvdatafeed.main import send_signal_to_channel
+                            await send_signal_to_channel(symbol, interval, signal, signal_price, current_price)
+
+                        last_signals[key] = signal
+
+                except Exception as e:
+                    print(f"❌ {symbol} {interval} analiz hatası: {e}")
+
+                await asyncio.sleep(3)
+
+        await asyncio.sleep(180)  # Her 3 dakikada bir döngü
