@@ -9,7 +9,7 @@ def get_tv_interval(interval_str):
         "5": Interval.in_5_minute
     }.get(interval_str)
 
-def analyze_signals(symbol, interval_str):
+def analyze_signals(symbol, interval, manual=False):
     interval = get_tv_interval(interval_str)
     if interval is None:
         return None, None
