@@ -1,5 +1,3 @@
-render.yaml
-```yaml
 services:
   - type: worker
     name: telegram-bot
@@ -9,4 +7,3 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.13
-```
