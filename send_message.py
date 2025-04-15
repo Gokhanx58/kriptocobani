@@ -1,5 +1,3 @@
-send_message.py
-```python
 from telegram import Bot
 from config import BOT_TOKEN, CHANNEL_ID
 
@@ -10,4 +8,3 @@ def send_text(text):
         bot.send_message(chat_id=CHANNEL_ID, text=text)
     except Exception as e:
         print(f"Mesaj gönderme hatası: {e}")
-```
