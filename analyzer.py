@@ -6,7 +6,6 @@ from utils import round_to_nearest
 import datetime
 
 tv = TvDatafeed()
-
 last_signal_state = {}
 
 def analyze_signals():
@@ -24,7 +23,6 @@ def analyze_signals():
                 signal_price = df['close'].iloc[-2]
 
                 signal = "BEKLE"
-
                 choch_signal = check_choch(df)
                 ob_signal = check_order_block(df)
                 fvg_signal = check_fvg(df)
@@ -55,10 +53,9 @@ def analyze_signals():
 ⏱️ Zaman: {interval}
 📊 Sistem: CHoCH + Order Block + FVG (AL-GÜÇLÜ AL - SAT-GÜÇLÜ SAT)
 📌 Sinyal: ✅ {signal}
-📈 Sinyal Geldiği Fiyat: {round_to_nearest(signal_price, TOLERANCE)}
-📉 Şu Anki Fiyat: {round_to_nearest(last_close, TOLERANCE)}
-⏰ Zaman: {now}
-"""
+📈 Sinyal Geldiği Fiyat: {round_to_nearest(signal_price, TOLERANCE):.4f}
+💰 Şu Anki Fiyat: {round_to_nearest(last_close, TOLERANCE):.4f}
+⏰ Zaman: {now}"""
                     send_telegram_message(message)
 
             except Exception as e:
@@ -68,7 +65,4 @@ def check_choch(df):
     return "AL" if df['close'].iloc[-1] > df['close'].iloc[-2] else "SAT"
 
 def check_order_block(df):
-    return "AL" if df['low'].iloc[-1] > df['low'].iloc[-2] else "SAT"
-
-def check_fvg(df):
-    return "AL" if df['high'].iloc[-1] > df['high'].iloc[-2] else "SAT"
+    return "AL
