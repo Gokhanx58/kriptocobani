@@ -1,12 +1,16 @@
+import asyncio
 from telegram import Bot
 
 BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
-CHANNEL_ID = "-1002556449131"  # Dikkat: bu ID özel kanal içindir
+CHANNEL_ID = "-1002556449131"  # ID doğru
 
 bot = Bot(token=BOT_TOKEN)
 
-try:
-    bot.send_message(chat_id=CHANNEL_ID, text="✅ Test mesajı: Bu mesaj gelirse bağlantı tamam.")
-    print("✅ Telegram'a mesaj gönderildi.")
-except Exception as e:
-    print(f"❌ HATA: {e}")
+async def test_send():
+    try:
+        await bot.send_message(chat_id=CHANNEL_ID, text="✅ Bu bir test mesajıdır (await ile).")
+        print("✅ Telegram'a mesaj başarıyla gönderildi.")
+    except Exception as e:
+        print(f"❌ HATA: {e}")
+
+asyncio.run(test_send())
