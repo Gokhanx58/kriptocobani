@@ -1,5 +1,4 @@
 import asyncio
-from signal_loop import start_signal_loop
 
 print("🚀 Bot başlatılıyor...")
 
