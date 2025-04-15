@@ -22,13 +22,11 @@ def analyze_signals():
                 last_close = df['close'].iloc[-1]
                 signal_price = df['close'].iloc[-2]
 
-                signal = "BEKLE"
                 choch_signal = check_choch(df)
                 ob_signal = check_order_block(df)
                 fvg_signal = check_fvg(df)
 
-                signal_components = [choch_signal, ob_signal, fvg_signal]
-                signal_strength = signal_components.count("AL") - signal_components.count("SAT")
+                signal_strength = [choch_signal, ob_signal, fvg_signal].count("AL") - [choch_signal, ob_signal, fvg_signal].count("SAT")
 
                 if signal_strength >= 2:
                     signal = "GÜÇLÜ AL"
@@ -46,16 +44,16 @@ def analyze_signals():
 
                 if signal != "BEKLE" and signal != previous_signal:
                     last_signal_state[key] = signal
-
                     now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
 
                     message = f"""🪙 Coin: {symbol}
 ⏱️ Zaman: {interval}
 📊 Sistem: CHoCH + Order Block + FVG (AL-GÜÇLÜ AL - SAT-GÜÇLÜ SAT)
 📌 Sinyal: ✅ {signal}
-📈 Sinyal Geldiği Fiyat: {round_to_nearest(signal_price, TOLERANCE):.4f}
-💰 Şu Anki Fiyat: {round_to_nearest(last_close, TOLERANCE):.4f}
-⏰ Zaman: {now}"""
+📈 Sinyal Geldiği Fiyat: {round_to_nearest(signal_price, TOLERANCE)}
+💰 Şu Anki Fiyat: {round_to_nearest(last_close, TOLERANCE)}
+⏰ Zaman: {now}
+"""
                     send_telegram_message(message)
 
             except Exception as e:
@@ -65,4 +63,7 @@ def check_choch(df):
     return "AL" if df['close'].iloc[-1] > df['close'].iloc[-2] else "SAT"
 
 def check_order_block(df):
-    return "AL
+    return "AL" if df['low'].iloc[-1] > df['low'].iloc[-2] else "SAT"
+
+def check_fvg(df):
+    return "AL" if df['high'].iloc[-1] > df['high'].iloc[-2] else "SAT"
