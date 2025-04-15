@@ -1,12 +1,8 @@
-import asyncio
+main.py
+```python
+from signal_loop import start_signal_loop
 
-print("🚀 Bot başlatılıyor...")
-
-async def main():
-    await start_signal_loop()
-
-if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        print(f"💥 Başlatma hatası: {e}")
+if __name__ == '__main__':
+    print("🚀 Bot başlatılıyor...")
+    start_signal_loop()
+```
