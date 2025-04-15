@@ -1,5 +1,8 @@
+interval.py
+```python
 from enum import Enum
 
 class Interval(Enum):
-    in_1_minute = '1'
-    in_5_minute = '5'
+    in_1_minute = "1m"
+    in_5_minute = "5m"
+```
