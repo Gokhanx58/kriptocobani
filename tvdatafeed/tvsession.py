@@ -1,43 +1,63 @@
 # tvdatafeed/tvsession.py
 
-import requests
-from http.cookiejar import CookieJar
+import random
+import string
+import websocket
+import json
+import time
+import uuid
+from threading import Thread
+from .const import TRADINGVIEW_HEADERS
 
 class TVSession:
-    def __init__(self, username=None, password=None, proxies=None):
-        self.username = username
-        self.password = password
-        self.proxies = proxies
-        self.session = requests.session()
-        self.session.cookies = CookieJar()
-        self.authenticated = False
+    def __init__(self):
+        self.session = self._generate_session()
+        self.ws = None
+        self.connected = False
+        self.thread = None
+        self.responses = []
 
-        if self.username and self.password:
-            self.login()
+    def _generate_session(self):
+        return 'qs_' + ''.join(random.choices(string.ascii_lowercase + string.digits, k=12))
 
-    def login(self):
-        login_url = 'https://www.tradingview.com/accounts/signin/'
-        headers = {
-            'Referer': 'https://www.tradingview.com/',
-            'User-Agent': 'Mozilla/5.0'
-        }
-        payload = {
-            'username': self.username,
-            'password': self.password,
-            'remember': 'on'
-        }
-        response = self.session.post(login_url, json=payload, headers=headers, proxies=self.proxies)
+    def connect(self):
+        self.ws = websocket.WebSocketApp(
+            "wss://prodata.tradingview.com/socket.io/websocket",
+            header=TRADINGVIEW_HEADERS,
+            on_message=self.on_message,
+            on_error=self.on_error,
+            on_close=self.on_close,
+            on_open=self.on_open
+        )
+        self.thread = Thread(target=self.ws.run_forever)
+        self.thread.daemon = True
+        self.thread.start()
 
-        if response.status_code == 200 and response.json().get('user'):
-            self.authenticated = True
-        else:
-            raise Exception('Login failed to TradingView')
+        while not self.connected:
+            time.sleep(0.1)
 
-    def get(self, url, headers=None, params=None):
-        return self.session.get(url, headers=headers, params=params, proxies=self.proxies)
+    def on_message(self, ws, message):
+        if message.startswith("~m~"):
+            length = int(message[3:message.find("~m~", 3)])
+            content = message[message.find("~m~", 3) + 3:][:length]
+            data = json.loads(content)
+            self.responses.append(data)
 
-    def post(self, url, headers=None, data=None, json=None):
-        return self.session.post(url, headers=headers, data=data, json=json, proxies=self.proxies)
+    def on_error(self, ws, error):
+        print(f"TVSession Error: {error}")
 
-    def cookies_dict(self):
-        return self.session.cookies.get_dict()
+    def on_close(self, ws):
+        self.connected = False
+        print("TVSession Closed")
+
+    def on_open(self, ws):
+        self.connected = True
+        print("TVSession Opened")
+
+    def send(self, data):
+        payload = json.dumps(data)
+        message = f"~m~{len(payload)}~m~{payload}"
+        self.ws.send(message)
+
+    def close(self):
+        self.ws.close()
