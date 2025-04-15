@@ -53,6 +53,8 @@ def analyze_signals(symbol, interval_str, manual=False):
     key = f"{symbol}_{interval_str}"
     if not manual and previous_signal.get(key) == signal:
         return None, price
+        print(f"[DEBUG] {symbol} {interval_str} için veri: {df.shape if df is not None else 'YOK'}")
+
 
     previous_signal[key] = signal
     return confidence, price
