@@ -1,5 +1,3 @@
-telegram_send.py
-```python
 from telegram import Bot
 from config import BOT_TOKEN, CHANNEL_ID
 
@@ -28,4 +26,3 @@ async def send_signal_to_channel(symbol, interval, signal, old_price, current_pr
         await bot.send_message(chat_id=CHANNEL_ID, text=mesaj)
     except Exception as e:
         print(f"Telegram gönderim hatası: {e}")
-```
