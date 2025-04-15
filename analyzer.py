@@ -1,38 +1,43 @@
 from tvdatafeed import TvDatafeed, Interval
 from utils import round_to_nearest
-from telegram_send import send_signal_to_channel
+import pandas as pd
 
-prev_signals = {}
+def analyze_signals(symbol, interval):
+    tv = TvDatafeed()
+    df = tv.get_hist(
+        symbol=symbol,
+        exchange='BINANCE',
+        interval=Interval(interval),
+        n_bars=100
+    )
 
-interval_map = {
-    1: Interval.in_1_minute,
-    5: Interval.in_5_minute
-}
-
-tv = TvDatafeed()
-
-def determine_signal(df):
-    # Simülasyon amaçlı: son kapanış değerine göre sinyal ver
-    last = df.close.iloc[-1]
-    prev = df.close.iloc[-2]
-    diff = last - prev
-    if diff > 0.1:
-        return "AL"
-    elif diff < -0.1:
-        return "SAT"
-    return "BEKLE"
-
-async def analyze_signals(symbol, tf):
-    interval = interval_map[tf]
-    df = tv.get_hist(symbol=symbol, exchange="MEXC", interval=interval, n_bars=50)
     if df is None or df.empty:
-        raise ValueError("Veri alınamadı")
+        return None
 
-    signal = determine_signal(df)
-    prev = prev_signals.get((symbol, tf))
+    # Sinyal tipi belirleme mantığı (örnek olarak trendin yönüne göre)
+    last_close = df['close'].iloc[-1]
+    prev_close = df['close'].iloc[-2]
 
-    if prev != signal:
-        price = df.close.iloc[-2]
-        current = df.close.iloc[-1]
-        await send_signal_to_channel(symbol, tf, signal, price, current)
-        prev_signals[(symbol, tf)] = signal
+    if last_close > prev_close:
+        signal = 'AL'
+        comment = 'Yükseliş bekleniyor'
+        icon = '✅'
+    elif last_close < prev_close:
+        signal = 'SAT'
+        comment = 'Geri çekilme bekleniyor'
+        icon = '❌'
+    else:
+        signal = 'BEKLE'
+        comment = 'Net sinyal yok'
+        icon = '⏸'
+
+    signal_price = round_to_nearest(prev_close)
+    current_price = round_to_nearest(last_close)
+
+    return {
+        'signal': signal,
+        'comment': comment,
+        'icon': icon,
+        'signal_price': signal_price,
+        'current_price': current_price
+    }
