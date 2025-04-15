@@ -1,17 +1,22 @@
 # tvdatafeed/utils.py
 
 import json
-import re
+import random
+import string
 
+def get_random_string(length=12):
+    return ''.join(random.choices(string.ascii_lowercase + string.digits, k=length))
 
-def generate_session(prefix="qs"):
-    return prefix + "_" + "".join(re.sample("abcdefghijklmnopqrstuvwxyz0123456789", 12))
+def tv_json_loads(json_str):
+    try:
+        return json.loads(json_str)
+    except json.JSONDecodeError:
+        return {}
 
-
-def construct_message(func, param):
-    return json.dumps({"m": func, "p": param}, separators=(',', ':'))
-
-
-def create_message(func, param):
-    message = construct_message(func, param)
-    return f'{len(message)}\n{message}'
+def create_tv_request_payload(symbol, exchange, interval):
+    return {
+        "symbol": f"{exchange}:{symbol}",
+        "resolution": interval,
+        "from": None,  # To be filled with a timestamp
+        "to": None,    # To be filled with a timestamp
+    }
