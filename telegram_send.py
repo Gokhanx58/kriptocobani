@@ -1,6 +1,8 @@
+# telegram_send.py (renkli, sade, fiyatlı + log destekli)
+
 from telegram import Bot
 
-BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
+BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmr4OjtKy8ENMVvLKcs"
 CHANNEL_ID = "@GoKriptoLine"
 bot = Bot(token=BOT_TOKEN)
 
