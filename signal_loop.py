@@ -1,5 +1,3 @@
-signal_loop.py
-```python
 import asyncio
 from analyzer import analyze_signals
 
@@ -18,4 +16,3 @@ async def start_signal_loop():
                 except Exception as e:
                     print(f"❌ {symbol} {tf} analiz hatası: {e}")
         await asyncio.sleep(180)
-```
