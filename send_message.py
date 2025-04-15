@@ -1,8 +1,13 @@
+import requests
 from config import TELEGRAM_TOKEN, TELEGRAM_CHANNEL
-from telegram import Bot
-
-bot = Bot(token=TELEGRAM_TOKEN)
 
 def send_telegram_message(message: str):
-    print("📤 Telegram'a mesaj gönderiliyor:", message)
-    bot.send_message(chat_id=TELEGRAM_CHANNEL, text=message)
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    data = {
+        "chat_id": TELEGRAM_CHANNEL,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+    response = requests.post(url, data=data)
+    print(f"Telegram mesaj yanıtı: {response.status_code} - {response.text}")
+    return response.status_code == 200
