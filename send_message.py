@@ -1,10 +1,14 @@
-from telegram import Bot
-from config import BOT_TOKEN, CHANNEL_ID
+import requests
+from config import TELEGRAM_TOKEN, TELEGRAM_CHANNEL
 
-bot = Bot(token=BOT_TOKEN)
-
-def send_text(text):
+def send_telegram_message(message: str):
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHANNEL,
+        "text": message
+    }
     try:
-        bot.send_message(chat_id=CHANNEL_ID, text=text)
-    except Exception as e:
-        print(f"Mesaj gönderme hatası: {e}")
+        response = requests.post(url, json=payload)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Telegram mesaj gönderilemedi: {e}")
