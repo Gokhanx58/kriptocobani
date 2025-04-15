@@ -1,57 +1,97 @@
+# analyzer.py
+
 from tvdatafeed import TvDatafeed, Interval
-import pandas as pd
+from utils import round_to_nearest
+import datetime
 
-# TradingView login bilgileri (giriş yapmaya gerek yoksa boş bırakılabilir)
-tv = TvDatafeed()
+# TradingView login bilgileriniz (Render icin cookies ile calisiyor olacak)
+tv = TvDatafeed(username=None, password=None)
 
-# Kayma toleransı (örnek: 0.002 = %0.2 farkla sinyal geçerli kabul edilir)
-TOLERANS = 0.002
+# Kayma toleransı (örneğin 0.002 → %0.2)
+SLIPPAGE = 0.002
 
-# Önceki sinyallerin tutulduğu yer
-previous_signals = {}
+# Önceki sinyalleri saklamak için (sembol/zaman dilimi bazlı)
+last_signals = {}
 
-def get_current_signal(df):
-    last = df.iloc[-1]
-    labels = [str(last.get(col, "")).lower() for col in df.columns]
+def detect_signal(df):
+    """
+    Mxwll Suite sinyal kurallarına göre temel sinyal oluşturucu.
+    Sadece CHoCH + Order Block + FVG bir aradaysa sinyal üretilecek.
+    Bu kısmı daha sonra geliştirilebilir hale getirdik.
+    """
+    # Simülasyon: son 5 mumda CHoCH, Order Block ve FVG varlığına bakıyoruz (sadece örnek)
+    if len(df) < 5:
+        return "BEKLE", 0.0
 
-    if "long" in labels and "order" in str(labels) and "fvg" in str(labels):
-        return "GÜÇLÜ AL"
-    elif "long" in labels:
-        return "AL"
-    elif "short" in labels and "order" in str(labels) and "fvg" in str(labels):
-        return "GÜÇLÜ SAT"
-    elif "short" in labels:
-        return "SAT"
-    return "BEKLE"
+    row = df.iloc[-1]
+
+    # Göstergesel şartlar burada kontrol edilir
+    choch = row.get("choch", False)
+    order_block = row.get("order_block", False)
+    fvg = row.get("fvg", False)
+
+    if choch and order_block and fvg:
+        if row["close"] > row["open"]:
+            return "GÜÇLÜ AL", row["close"]
+        else:
+            return "GÜÇLÜ SAT", row["close"]
+
+    if (choch and order_block) or (order_block and fvg):
+        if row["close"] > row["open"]:
+            return "AL", row["close"]
+        else:
+            return "SAT", row["close"]
+
+    return "BEKLE", row["close"]
 
 def analyze_signals(symbol, interval):
+    """
+    Belirtilen coin ve zaman dilimine gore analiz yapar.
+    """
     try:
-        # Veriyi al
-        data = tv.get_hist(symbol=symbol, exchange='BINANCE', interval=Interval(interval), n_bars=250)
-        if data is None or data.empty:
-            print(f"[Veri] {symbol}-{interval}m verisi alınamadı.")
-            return None, None, None
+        tv_interval = Interval.in_1_minute if interval == "1m" else Interval.in_5_minute
+        df = tv.get_hist(symbol=symbol, exchange="BINANCE", interval=tv_interval, n_bars=100)
+        if df is None or df.empty:
+            print(f"[!] Veri alinamadi: {symbol}-{interval}")
+            return None
 
-        # Son fiyat bilgisi
-        entry_price = float(data['close'].iloc[-2])
-        current_price = float(data['close'].iloc[-1])
+        # Örnek sütunları simüle edelim (çünkü TradingView Mxwll Suite verisi pine script üzerinden çekilemiyor)
+        df["choch"] = df["close"].diff().abs() > 5
+        df["order_block"] = df["close"].rolling(3).mean() > df["open"]
+        df["fvg"] = (df["high"] - df["low"]).rolling(3).mean() > 10
 
-        signal = get_current_signal(data)
+        signal, signal_price = detect_signal(df)
+        now_price = df.iloc[-1]["close"]
+
+        # Önceki sinyal ile karşılaştır
         key = f"{symbol}_{interval}"
+        previous_signal = last_signals.get(key, (None, None))
 
-        if key not in previous_signals:
-            previous_signals[key] = signal
-            return signal, entry_price, current_price
+        if previous_signal[0] and previous_signal[0] != signal and signal != "BEKLE":
+            # Sinyal değişimi varsa
+            last_signals[key] = (signal, signal_price)
+            return {
+                "symbol": symbol,
+                "interval": interval,
+                "signal": signal,
+                "signal_price": signal_price,
+                "now_price": now_price,
+                "close_last": previous_signal[0]
+            }
 
-        # Sinyal değiştiyse "işlem kapat" ve yeni sinyal gönder
-        if previous_signals[key] != signal and signal != "BEKLE":
-            old_signal = previous_signals[key]
-            previous_signals[key] = signal
-            return f"KAPAT → {old_signal}", entry_price, current_price  # Önce işlem kapat
-        elif signal != "BEKLE":
-            return signal, entry_price, current_price
-        return None, None, None
+        elif previous_signal[0] != signal and signal != "BEKLE":
+            last_signals[key] = (signal, signal_price)
+            return {
+                "symbol": symbol,
+                "interval": interval,
+                "signal": signal,
+                "signal_price": signal_price,
+                "now_price": now_price,
+                "close_last": None
+            }
+
+        return None
 
     except Exception as e:
-        print(f"[Analyzer] Hata: {e}")
-        return None, None, None
+        print(f"❌ {symbol} {interval} analiz hatası: {e}")
+        return None
