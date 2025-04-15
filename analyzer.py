@@ -1,15 +1,18 @@
+# analyzer.py (Gelişmiş - CHoCH + Order Block + FVG + İlk tetikleme destekli)
+
 from tvdatafeed import TvDatafeed, Interval
 import pandas as pd
 
 previous_signal = {}
 
 def get_tv_interval(interval_str):
-    return {
+    mapping = {
         "1": Interval.in_1_minute,
         "5": Interval.in_5_minute,
-    }.get(interval_str, None)
+    }
+    return mapping.get(interval_str, None)
 
-def analyze_signals(symbol, interval_str):
+def analyze_signals(symbol, interval_str, manual=False):
     interval = get_tv_interval(interval_str)
     if interval is None:
         return None, None
@@ -22,7 +25,6 @@ def analyze_signals(symbol, interval_str):
 
     df = tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval, n_bars=150)
     if df is None or df.empty or len(df) < 20:
-        print(f"❗ {symbol} {interval_str} veri çekilemedi.")
         return None, None
 
     df['high_level'] = df['high'].rolling(window=20).max()
@@ -32,8 +34,8 @@ def analyze_signals(symbol, interval_str):
 
     price = df['close'].iloc[-1]
     prev_price = df['close'].iloc[-2]
-    high = df['high_level'].iloc[-2]
-    low = df['low_level'].iloc[-2]
+    high_level = df['high_level'].iloc[-2]
+    low_level = df['low_level'].iloc[-2]
     ob_high = df['ob_upper'].iloc[-2]
     ob_low = df['ob_lower'].iloc[-2]
 
@@ -41,14 +43,18 @@ def analyze_signals(symbol, interval_str):
     in_order_block = (ob_low * (1 - tolerance)) <= price <= (ob_high * (1 + tolerance))
 
     signal = "BEKLE"
-    if prev_price < high and price > high and in_order_block:
-        signal = "Güçlü AL" if (price - high) / price > 0.001 else "AL"
-    elif prev_price > low and price < low and in_order_block:
-        signal = "Güçlü SAT" if (low - price) / price > 0.001 else "SAT"
+    confidence = "Normal"
+
+    if prev_price < high_level and price > high_level and in_order_block:
+        signal = "AL"
+        confidence = "Güçlü AL" if (price - high_level) / price > 0.001 else "AL"
+    elif prev_price > low_level and price < low_level and in_order_block:
+        signal = "SAT"
+        confidence = "Güçlü SAT" if (low_level - price) / price > 0.001 else "SAT"
 
     key = f"{symbol}_{interval_str}"
-    if previous_signal.get(key) == signal:
+    if not manual and previous_signal.get(key) == confidence:
         return None, price
 
-    previous_signal[key] = signal
-    return signal, price
+    previous_signal[key] = confidence
+    return confidence, price
