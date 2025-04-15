@@ -1,9 +1,7 @@
-from .tvsession import TVSession
-from .interval import Interval
+# main.py
+import asyncio
+from signal_loop import start_signal_loop
 
-class TvDatafeed:
-    def __init__(self, username=None, password=None, auto_login=True):
-        self.session = TVSession()
-
-    def get_hist(self, symbol, exchange, interval=Interval.in_1_minute, n_bars=100):
-        return self.session.get_hist(symbol, exchange, interval, n_bars)
+if __name__ == "__main__":
+    print("🚀 Bot başlatılıyor...")
+    asyncio.run(start_signal_loop())
