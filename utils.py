@@ -1,6 +1,5 @@
-# utils.py
-
-def round_to_nearest(value, precision=0.0001):
-    if value is None:
-        return "-"
-    return round(value, 4)
+utils.py
+```python
+def round_to_nearest(x, step):
+    return round(x / step) * step
+```
