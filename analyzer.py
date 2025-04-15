@@ -1,50 +1,57 @@
 from tvdatafeed import TvDatafeed, Interval
 import pandas as pd
 
-previous_signal = {}
+# TradingView login bilgileri (giriş yapmaya gerek yoksa boş bırakılabilir)
+tv = TvDatafeed()
 
-def get_tv_interval(interval_str):
-    return {
-        "1": Interval.in_1_minute,
-        "5": Interval.in_5_minute
-    }.get(interval_str)
+# Kayma toleransı (örnek: 0.002 = %0.2 farkla sinyal geçerli kabul edilir)
+TOLERANS = 0.002
 
-def analyze_signals(symbol, interval, manual=False):
-    interval = get_tv_interval(interval_str)
-    if interval is None:
-        return None, None
+# Önceki sinyallerin tutulduğu yer
+previous_signals = {}
 
-    tv = TvDatafeed(
-        session='fm0j7ziifzup5jm6sa5h6nqf65iqcxgu',
-        session_sign='v3:iz6molF7z3oCKrettxY7v1u1cSvcjCnPflkvM0Pst3E=',
-        tv_ecuid='10a9a8e3-be0d-4835-b7ce-bb51e801ff9b'
-    )
+def get_current_signal(df):
+    last = df.iloc[-1]
+    labels = [str(last.get(col, "")).lower() for col in df.columns]
 
-    df = tv.get_hist(symbol=symbol, exchange="MEXC", interval=interval, n_bars=150)
-    if df is None or df.empty or len(df) < 20:
-        return None, None
+    if "long" in labels and "order" in str(labels) and "fvg" in str(labels):
+        return "GÜÇLÜ AL"
+    elif "long" in labels:
+        return "AL"
+    elif "short" in labels and "order" in str(labels) and "fvg" in str(labels):
+        return "GÜÇLÜ SAT"
+    elif "short" in labels:
+        return "SAT"
+    return "BEKLE"
 
-    df['high_level'] = df['high'].rolling(20).max()
-    df['low_level'] = df['low'].rolling(20).min()
-    df['ob_upper'] = df['open'].rolling(3).max()
-    df['ob_lower'] = df['close'].rolling(3).min()
+def analyze_signals(symbol, interval):
+    try:
+        # Veriyi al
+        data = tv.get_hist(symbol=symbol, exchange='BINANCE', interval=Interval(interval), n_bars=250)
+        if data is None or data.empty:
+            print(f"[Veri] {symbol}-{interval}m verisi alınamadı.")
+            return None, None, None
 
-    price = df['close'].iloc[-1]
-    prev_price = df['close'].iloc[-2]
-    high = df['high_level'].iloc[-2]
-    low = df['low_level'].iloc[-2]
-    ob_high = df['ob_upper'].iloc[-2]
-    ob_low = df['ob_lower'].iloc[-2]
+        # Son fiyat bilgisi
+        entry_price = float(data['close'].iloc[-2])
+        current_price = float(data['close'].iloc[-1])
 
-    in_order_block = (ob_low * 0.998) <= price <= (ob_high * 1.002)
-    signal = "BEKLE"
-    confidence = "Normal"
+        signal = get_current_signal(data)
+        key = f"{symbol}_{interval}"
 
-    if prev_price < high and price > high and in_order_block:
-        confidence = "Güçlü AL" if (price - high) / price > 0.001 else "AL"
-    elif prev_price > low and price < low and in_order_block:
-        confidence = "Güçlü SAT" if (low - price) / price > 0.001 else "SAT"
-    else:
-        return None, price
+        if key not in previous_signals:
+            previous_signals[key] = signal
+            return signal, entry_price, current_price
 
-    return confidence, price
+        # Sinyal değiştiyse "işlem kapat" ve yeni sinyal gönder
+        if previous_signals[key] != signal and signal != "BEKLE":
+            old_signal = previous_signals[key]
+            previous_signals[key] = signal
+            return f"KAPAT → {old_signal}", entry_price, current_price  # Önce işlem kapat
+        elif signal != "BEKLE":
+            return signal, entry_price, current_price
+        return None, None, None
+
+    except Exception as e:
+        print(f"[Analyzer] Hata: {e}")
+        return None, None, None
