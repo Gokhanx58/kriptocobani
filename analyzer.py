@@ -73,3 +73,5 @@ async def send_signal(symbol, interval, signal, signal_price, current_price):
         await bot.send_message(chat_id=CHANNEL_ID, text=mesaj)
     except Exception as e:
         print(f"📛 Telegram gönderim hatası: {e}")
+        print(f"🔍 {symbol} | {interval} | Sinyal: {signal}")
+
