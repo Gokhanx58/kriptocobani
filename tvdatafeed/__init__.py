@@ -1,2 +1,4 @@
-from .main import TvDatafeed
-from .interval import Interval
+__init__.py
+```python
+from .main import TvDatafeed, Interval
+```
