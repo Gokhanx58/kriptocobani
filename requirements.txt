@@ -5,4 +5,4 @@ ta==0.10.2
 nest_asyncio==1.6.0
 httpx==0.24.1
 requests==2.32.3
-
+tvdatafeed @ git+https://github.com/rongardF/tvdatafeed.git
