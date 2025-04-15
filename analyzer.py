@@ -1,5 +1,3 @@
-analyzer.py
-```python
 from tvdatafeed import TvDatafeed, Interval
 from utils import round_to_nearest
 from telegram_send import send_signal_to_channel
@@ -38,4 +36,3 @@ async def analyze_signals(symbol, tf):
         current = df.close.iloc[-1]
         await send_signal_to_channel(symbol, tf, signal, price, current)
         prev_signals[(symbol, tf)] = signal
-```
