@@ -1,3 +1,5 @@
+# telegram_send.py (renkli, sade, fiyatlı + log destekli)
+
 from telegram import Bot
 
 BOT_TOKEN = "8002562873:AAHoMdOpiZEi2XILMmrwAOjtyKEWNMVLKcs"
