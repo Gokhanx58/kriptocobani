@@ -1,97 +1,77 @@
 # analyzer.py
-
+import pandas as pd
+from datetime import datetime
 from tvdatafeed import TvDatafeed, Interval
+from telegram import Bot
 from utils import round_to_nearest
-import datetime
 
-# TradingView login bilgileriniz (Render icin cookies ile calisiyor olacak)
-tv = TvDatafeed(username=None, password=None)
+tv = TvDatafeed(username="marsticaret1", password="8690Yn678690")
+bot = Bot(token="7677308602:AAHH7vloPaQ7PqgFdBnJ2DKYy6sjJ5iqaYE")
+CHANNEL_ID = "@GokriptoHan"
 
-# Kayma toleransı (örneğin 0.002 → %0.2)
-SLIPPAGE = 0.002
+last_sent = {}
 
-# Önceki sinyalleri saklamak için (sembol/zaman dilimi bazlı)
-last_signals = {}
+symbols = ["BTCUSDT", "ETHUSDT", "AVAXUSDT", "SOLUSDT", "SUIUSDT"]
+intervals = {
+    "1m": Interval.in_1_minute,
+    "5m": Interval.in_5_minute
+}
 
 def detect_signal(df):
-    """
-    Mxwll Suite sinyal kurallarına göre temel sinyal oluşturucu.
-    Sadece CHoCH + Order Block + FVG bir aradaysa sinyal üretilecek.
-    Bu kısmı daha sonra geliştirilebilir hale getirdik.
-    """
-    # Simülasyon: son 5 mumda CHoCH, Order Block ve FVG varlığına bakıyoruz (sadece örnek)
-    if len(df) < 5:
-        return "BEKLE", 0.0
+    # Basit CHoCH + OB + FVG stratejisi (örnek mantık)
+    latest_close = df["close"].iloc[-1]
+    previous_close = df["close"].iloc[-2]
+    signal_price = df["close"].iloc[-3]
 
-    row = df.iloc[-1]
+    if latest_close > previous_close and previous_close > df["close"].iloc[-3]:
+        return "AL", signal_price
+    elif latest_close < previous_close and previous_close < df["close"].iloc[-3]:
+        return "SAT", signal_price
+    return "BEKLE", None
 
-    # Göstergesel şartlar burada kontrol edilir
-    choch = row.get("choch", False)
-    order_block = row.get("order_block", False)
-    fvg = row.get("fvg", False)
+async def analyze_signals(initial=False):
+    for symbol in symbols:
+        for int_name, int_enum in intervals.items():
+            try:
+                print(f"🔍 Analiz ediliyor: {symbol}-{int_name}")
+                df = tv.get_hist(symbol=symbol, exchange="MEXC", interval=int_enum, n_bars=200)
+                if df is None or df.empty:
+                    print(f"⛔ Veri alınamadı: {symbol}-{int_name}")
+                    continue
 
-    if choch and order_block and fvg:
-        if row["close"] > row["open"]:
-            return "GÜÇLÜ AL", row["close"]
-        else:
-            return "GÜÇLÜ SAT", row["close"]
+                sinyal, sinyal_fiyati = detect_signal(df)
+                anlik_fiyat = df["close"].iloc[-1]
+                key = f"{symbol}_{int_name}"
 
-    if (choch and order_block) or (order_block and fvg):
-        if row["close"] > row["open"]:
-            return "AL", row["close"]
-        else:
-            return "SAT", row["close"]
+                if initial or key not in last_sent:
+                    last_sent[key] = sinyal
+                    await send_signal(symbol, int_name, sinyal, sinyal_fiyati, anlik_fiyat)
+                elif sinyal != last_sent[key]:
+                    await send_signal(symbol, int_name, sinyal, sinyal_fiyati, anlik_fiyat)
+                    last_sent[key] = sinyal
+            except Exception as e:
+                print(f"❌ {symbol} {int_name} analiz hatası: {e}")
 
-    return "BEKLE", row["close"]
+async def send_signal(symbol, interval, signal, signal_price, current_price):
+    emoji = "✅" if "AL" in signal else "❌" if "SAT" in signal else "⏳"
+    yorum = {
+        "Güçlü AL": "Yükseliş beklentisi çok güçlü",
+        "AL": "Yükseliş bekleniyor",
+        "Güçlü SAT": "Düşüş baskısı yüksek",
+        "SAT": "Geri çekilme bekleniyor",
+        "BEKLE": "Sinyal oluşumu bekleniyor"
+    }.get(signal, "Analiz yapılıyor...")
 
-def analyze_signals(symbol, interval):
-    """
-    Belirtilen coin ve zaman dilimine gore analiz yapar.
-    """
+    mesaj = (
+        f"🪙 Coin: {symbol}\n"
+        f"⏱️ Zaman: {interval}\n"
+        f"📊 Sistem: CHoCH + Order Block + FVG\n"
+        f"📌 Sinyal: {emoji} {signal} → {yorum}\n"
+        f"💹 Sinyal Geldiği Fiyat: {round_to_nearest(signal_price)}\n"
+        f"💰 Şu Anki Fiyat: {round_to_nearest(current_price)}"
+    )
     try:
-        tv_interval = Interval.in_1_minute if interval == "1m" else Interval.in_5_minute
-        df = tv.get_hist(symbol=symbol, exchange="BINANCE", interval=tv_interval, n_bars=100)
-        if df is None or df.empty:
-            print(f"[!] Veri alinamadi: {symbol}-{interval}")
-            return None
-
-        # Örnek sütunları simüle edelim (çünkü TradingView Mxwll Suite verisi pine script üzerinden çekilemiyor)
-        df["choch"] = df["close"].diff().abs() > 5
-        df["order_block"] = df["close"].rolling(3).mean() > df["open"]
-        df["fvg"] = (df["high"] - df["low"]).rolling(3).mean() > 10
-
-        signal, signal_price = detect_signal(df)
-        now_price = df.iloc[-1]["close"]
-
-        # Önceki sinyal ile karşılaştır
-        key = f"{symbol}_{interval}"
-        previous_signal = last_signals.get(key, (None, None))
-
-        if previous_signal[0] and previous_signal[0] != signal and signal != "BEKLE":
-            # Sinyal değişimi varsa
-            last_signals[key] = (signal, signal_price)
-            return {
-                "symbol": symbol,
-                "interval": interval,
-                "signal": signal,
-                "signal_price": signal_price,
-                "now_price": now_price,
-                "close_last": previous_signal[0]
-            }
-
-        elif previous_signal[0] != signal and signal != "BEKLE":
-            last_signals[key] = (signal, signal_price)
-            return {
-                "symbol": symbol,
-                "interval": interval,
-                "signal": signal,
-                "signal_price": signal_price,
-                "now_price": now_price,
-                "close_last": None
-            }
-
-        return None
-
+        print(f"📬 Telegram mesajı gönderiliyor: {mesaj}")
+        await bot.send_message(chat_id=CHANNEL_ID, text=mesaj)
     except Exception as e:
-        print(f"❌ {symbol} {interval} analiz hatası: {e}")
-        return None
+        print(f"📛 Telegram gönderim hatası: {e}")
