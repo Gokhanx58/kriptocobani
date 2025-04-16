@@ -1,30 +1,13 @@
-INTERVALS = {
-    "1m": "1",
-    "5m": "5",
-    "15m": "15",
-    "30m": "30",
-    "1h": "60",
-    "4h": "240",
-    "1d": "D",
-    "1w": "W",
-    "1M": "M"
-}
+from enum import Enum
 
-SCREENER = "crypto"
-
-GET_HISTORY_PAYLOAD = {
-    "symbol": "",
-    "resolution": "",
-    "from": 0,
-    "to": 0,
-    "countback": 300,
-    "currencyCode": "USD"
-}
-
-WEBSOCKET_HEADERS = {
-    "Connection": "Upgrade",
-    "Upgrade": "websocket",
-    "Host": "prodata.tradingview.com",
-    "Origin": "https://www.tradingview.com",
-    "User-Agent": "Mozilla/5.0"
-}
+class Interval(Enum):
+    """TradingView veri zaman dilimleri"""
+    INTERVAL_1_MINUTE = "1"
+    INTERVAL_5_MINUTE = "5"
+    INTERVAL_15_MINUTE = "15"
+    INTERVAL_30_MINUTE = "30"
+    INTERVAL_1_HOUR = "60"
+    INTERVAL_4_HOUR = "240"
+    INTERVAL_1_DAY = "1D"
+    INTERVAL_1_WEEK = "1W"
+    INTERVAL_1_MONTH = "1M"
