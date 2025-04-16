@@ -1,5 +1,5 @@
-from analyzer import analyze_signals
 import asyncio
+from analyzer import analyze_signals
 
 async def start_signal_loop():
     while True:
