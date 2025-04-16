@@ -1,4 +1,4 @@
-from tvdatafeed import TvDatafeed, Interval
+from .interval import Interval
 
 INTERVAL_MAP = {
     "1m": Interval.min1,
