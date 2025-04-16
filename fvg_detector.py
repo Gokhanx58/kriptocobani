@@ -1,25 +1,24 @@
 import pandas as pd
-from typing import List, Tuple
 
-def detect_fvg(df: pd.DataFrame) -> List[Tuple[pd.Timestamp, str]]:
-    fvg_signals = []
-    
-    # FVG: Fair Value Gap, body gap mantığına göre tespit yapılır
+def detect_fvg(df):
+    fvg_zones = []
+
     for i in range(2, len(df)):
-        prev2_high = df['high'].iloc[i - 2]
-        prev2_low = df['low'].iloc[i - 2]
-        prev1_high = df['high'].iloc[i - 1]
-        prev1_low = df['low'].iloc[i - 1]
-        curr_open = df['open'].iloc[i]
-        curr_close = df['close'].iloc[i]
-        curr_time = df.index[i]
+        high_2 = df['high'].iloc[i - 2]
+        low_2 = df['low'].iloc[i - 2]
+        high_1 = df['high'].iloc[i - 1]
+        low_1 = df['low'].iloc[i - 1]
+        high_0 = df['high'].iloc[i]
+        low_0 = df['low'].iloc[i]
 
-        # Gap up: önceki 2 mumun en düşük seviyesi, son muma göre daha yüksek
-        if prev2_low > curr_high := max(curr_open, curr_close):
-            fvg_signals.append((curr_time, 'FVG_UP'))
+        time = df.index[i]
 
-        # Gap down: önceki 2 mumun en yüksek seviyesi, son muma göre daha düşük
-        elif prev2_high < curr_low := min(curr_open, curr_close):
-            fvg_signals.append((curr_time, 'FVG_DOWN'))
+        # Bullish FVG (Up Gap)
+        if low_0 > high_2:
+            fvg_zones.append((time, 'FVG_UP', high_2, low_0))
 
-    return fvg_signals
+        # Bearish FVG (Down Gap)
+        elif high_0 < low_2:
+            fvg_zones.append((time, 'FVG_DOWN', high_0, low_2))
+
+    return fvg_zones
