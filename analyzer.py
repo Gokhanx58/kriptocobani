@@ -7,7 +7,7 @@ import pandas as pd
 last_signals = {}
 
 def get_ohlcv(symbol, interval):
-    tv = TvDatafeed()
+    tv = TvDatafeed(username="marsticaret1", password="8690Yn678690")
     tv_interval = Interval.MIN_1 if interval == "1m" else Interval.MIN_5
     df = tv.get_hist(symbol=symbol, interval=tv_interval, n_bars=100)
     if df is None or df.empty:
