@@ -1,20 +1,34 @@
+import requests
+
+
 class TvSession:
-    def login(self, username=None, password=None):
-        pass  # Login simülasyonu (dummy yapı)
-    
-    def get_hist(self, symbol, exchange, interval, n_bars):
-        # Dummy verisi döndüren simülasyon
-        from datetime import datetime, timedelta
-        import pandas as pd
-        now = datetime.now()
-        data = []
-        for i in range(n_bars):
-            data.append({
-                'datetime': now - timedelta(minutes=i),
-                'open': 100 + i * 0.1,
-                'high': 101 + i * 0.1,
-                'low': 99 + i * 0.1,
-                'close': 100 + i * 0.1,
-                'volume': 1000 + i
-            })
-        return data
+    def __init__(self, username=None, password=None):
+        self.username = username
+        self.password = password
+        self.session = requests.Session()
+        self.headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Referer": "https://www.tradingview.com"
+        }
+
+        if self.username and self.password:
+            self.login()
+
+    def login(self):
+        try:
+            url = "https://www.tradingview.com/accounts/signin/"
+            payload = {
+                "username": self.username,
+                "password": self.password,
+                "remember": "on"
+            }
+            response = self.session.post(url, json=payload, headers=self.headers)
+
+            if response.status_code == 200 and "sessionid" in response.cookies:
+                print("✅ TradingView oturumu başarıyla başlatıldı.")
+            else:
+                print("❌ Giriş başarısız. Yanıt kodu:", response.status_code)
+                print(response.text)
+
+        except Exception as e:
+            print(f"⚠️ Giriş sırasında hata oluştu: {e}")
