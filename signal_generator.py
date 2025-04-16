@@ -1,48 +1,38 @@
 from choch_detector import detect_choch
 from order_block_detector import detect_order_blocks
 from fvg_detector import detect_fvg
-import pandas as pd
+import logging
 
-def generate_signals(df: pd.DataFrame):
+def generate_signals(df):
+    final_signals = []
+
+    # 1. CHoCH, OB ve FVG'leri ayrı ayrı tespit et
     choch_signals = detect_choch(df)
     ob_zones = detect_order_blocks(df, choch_signals)
     fvg_zones = detect_fvg(df)
 
-    print("\n====================")
-    print("CHOCH:", choch_signals)
-    print("ORDER BLOCKS:", ob_zones)
-    print("FVG ZONES:", fvg_zones)
+    # Log kayıtları
+    logging.warning("====================")
+    logging.warning("CHOCH: %s", choch_signals)
+    logging.warning("ORDER BLOCKS: %s", ob_zones)
+    logging.warning("FVG ZONES: %s", fvg_zones)
 
-    signals = []
+    # Timestamp eşleşmeleriyle sinyal üret
+    for choch_time, choch_type in choch_signals:
+        matching_ob = [ob for ob in ob_zones if ob[0] == choch_time]
+        matching_fvg = [fvg for fvg in fvg_zones if fvg[0] == choch_time]
 
-    for ts, choch_type in choch_signals:
-        matching_ob = next((ob for ob in ob_zones if ob[0] == ts), None)
-        if not matching_ob:
-            print(f"⛔ OB bulunamadı: {ts}")
-            continue
+        if matching_ob and matching_fvg:
+            direction = None
 
-        _, ob_type, ob_top, ob_bottom = matching_ob
+            if choch_type == "CHoCH_UP" and matching_ob[0][1] == "OB_LONG" and matching_fvg[0][1] == "FVG_UP":
+                direction = "AL"
 
-        matching_fvg = [
-            fvg for fvg in fvg_zones
-            if abs((fvg[0] - ts).total_seconds()) <= 300  # tolerans 5 dakika
-        ]
+            elif choch_type == "CHoCH_DOWN" and matching_ob[0][1] == "OB_SHORT" and matching_fvg[0][1] == "FVG_DOWN":
+                direction = "SAT"
 
-        if not matching_fvg:
-            print(f"⚠️ FVG yok (timestamp uyuşmadı): {ts}")
-            continue
+            if direction:
+                final_signals.append((choch_time, direction))
 
-        fvg_type = matching_fvg[0][1]
-
-        if choch_type == 'CHoCH_DOWN' and ob_type == 'OB_LONG' and fvg_type == 'FVG_DOWN':
-            signals.append((ts, 'AL'))
-            print(f"✅ AL sinyali oluştu: {ts}")
-        elif choch_type == 'CHoCH_UP' and ob_type == 'OB_SHORT' and fvg_type == 'FVG_UP':
-            signals.append((ts, 'SAT'))
-            print(f"✅ SAT sinyali oluştu: {ts}")
-        else:
-            print(f"❓ Koşullar uyuşmadı: {ts} -> {choch_type}, {ob_type}, {fvg_type}")
-
-    print("FINAL SIGNALS:", signals)
-    print("====================\n")
-    return signals
+    logging.warning("FINAL SIGNALS: %s", final_signals)
+    return final_signals
