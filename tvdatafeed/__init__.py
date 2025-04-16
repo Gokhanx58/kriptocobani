@@ -1,1 +1,1 @@
-from .main import TvDatafeed
+from .main import TvDatafeed, Interval
