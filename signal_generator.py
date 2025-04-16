@@ -22,7 +22,7 @@ async def run_signal_loop():
     while True:
         for symbol in SYMBOLS:
             for interval in INTERVALS:
-                df = tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval, n_bars=300)
+                df = tv.get_hist(symbol=symbol, interval=interval, n_bars=bars)
                 if df is None or df.empty:
                     continue
 
