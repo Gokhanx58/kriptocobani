@@ -1,7 +1,7 @@
-import asyncio
 from analyzer import analyze_signals
+import asyncio
 
 async def start_signal_loop():
     while True:
-        analyze_signals()
+        await analyze_signals()
         await asyncio.sleep(180)
