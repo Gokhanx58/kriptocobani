@@ -11,4 +11,3 @@ def get_interval(interval_str: str) -> Interval:
         "1d": Interval.DAY_1,
     }
     return mapping.get(interval_str, Interval.MIN_1)
-
