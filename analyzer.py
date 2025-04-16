@@ -71,14 +71,3 @@ def check_order_block(df):
 
 def check_fvg(df):
     return "AL" if df['high'].iloc[-1] > df['high'].iloc[-2] else "SAT"
-
-
-**signal_loop.py**
-
-import asyncio
-from analyzer import analyze_signals
-
-async def start_signal_loop():
-    while True:
-        analyze_signals()
-        await asyncio.sleep(180)
