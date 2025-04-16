@@ -1,11 +1,12 @@
-class TVSession:
-    def login(self, username, password):
-        pass  # Dummy login
+import requests
 
-    def get_hist(self, symbol, exchange, interval, n_bars):
-        import pandas as pd
-        import numpy as np
-        data = {
-            "close": pd.Series(np.random.randn(n_bars).cumsum() + 80000)
-        }
-        return pd.DataFrame(data)
+class TvSession:
+    def __init__(self):
+        self.session = requests.Session()
+        self.session.headers.update({
+            "User-Agent": "Mozilla/5.0"
+        })
+
+    def get_data(self, url, params=None):
+        response = self.session.get(url, params=params)
+        return response.json()
