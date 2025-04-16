@@ -1,12 +1,10 @@
 from enum import Enum
 
 class Interval(Enum):
-    INTERVAL_1_MINUTE = "1"
-    INTERVAL_5_MINUTE = "5"
-    INTERVAL_15_MINUTE = "15"
-    INTERVAL_30_MINUTE = "30"
-    INTERVAL_1_HOUR = "60"
-    INTERVAL_4_HOUR = "240"
-    INTERVAL_1_DAY = "1D"
-    INTERVAL_1_WEEK = "1W"
-    INTERVAL_1_MONTH = "1M"
+    MIN_1 = '1m'
+    MIN_5 = '5m'
+    MIN_15 = '15m'
+    MIN_30 = '30m'
+    HOUR_1 = '1h'
+    HOUR_4 = '4h'
+    DAY_1 = '1d'
