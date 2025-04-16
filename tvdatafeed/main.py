@@ -1,21 +1,14 @@
-from .const import Interval
-from .tvsession import TvDatafeed
+from tvdatafeed.tvsession import TvSession
+from tvdatafeed.utils import convert_to_df, Interval
+from tvdatafeed.const import INTERVALS
+import pandas as pd
 
-INTERVAL_MAP = {
-    "1m": Interval.min1,
-    "5m": Interval.min5,
-    "15m": Interval.min15,
-    "30m": Interval.min30,
-    "1h": Interval.hour1,
-    "4h": Interval.hour4,
-    "1d": Interval.day1
-}
+class TvDatafeed:
+    def __init__(self, username=None, password=None):
+        self.session = TvSession()
+        self.session.login(username, password)
 
-tv = TvDatafeed()
-
-df = tv.get_hist(
-    symbol=symbol,
-    exchange='BINANCE',
-    interval=INTERVAL_MAP[interval],  # doğru eşleşme burada yapılır
-    n_bars=300
-)
+    def get_hist(self, symbol, exchange='BINANCE', interval=Interval.in_1_minute, n_bars=500):
+        data = self.session.get_hist(symbol, exchange, interval.value, n_bars)
+        df = convert_to_df(data)
+        return df
