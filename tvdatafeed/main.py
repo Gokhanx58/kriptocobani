@@ -1,24 +1,7 @@
-from .const import Interval
-from .tvsession import TvSession
-import pandas as pd
+from signal_loop import start_signal_loop
+import asyncio
 
-class TvDatafeed:
-    def __init__(self, username: str = None, password: str = None):
-        self.session = TvSession(username, password)
+print("\n🚀 Sistem başlatılıyor...")
 
-    def get_hist(
-        self,
-        symbol: str,
-        exchange: str = 'BINANCE',
-        interval: Interval = Interval.MIN_1,
-        n_bars: int = 5000,
-    ) -> pd.DataFrame:
-
-        data = self.session.get_hist(
-            symbol=symbol,
-            exchange=exchange,
-            interval=interval,
-            n_bars=n_bars
-        )
-
-        return data
+if __name__ == "__main__":
+    asyncio.run(start_signal_loop())
