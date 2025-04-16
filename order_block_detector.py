@@ -1,21 +1,28 @@
 import pandas as pd
 
-def detect_order_blocks(df: pd.DataFrame, choch_signals):
-    order_blocks = []
+def detect_order_blocks(df, choch_signals):
     df = df.copy()
-    df['body'] = abs(df['close'] - df['open'])
+    order_blocks = []
 
-    for timestamp, choch_type in choch_signals:
-        choch_index = df.index.get_loc(timestamp)
-        lookahead = df.iloc[choch_index + 1: choch_index + 4]
+    for choch_time, choch_type in choch_signals:
+        idx = df.index.get_loc(choch_time)
 
-        if choch_type == 'CHoCH_DOWN':
-            candidate = lookahead[lookahead['close'] > lookahead['open']]
-            if not candidate.empty:
-                order_blocks.append((timestamp, 'OB_LONG', candidate['high'].iloc[0], candidate['low'].iloc[0]))
+        # CHoCH sonrası gelen 1-2 mum analiz edilecek
+        for offset in range(1, 3):
+            if idx + offset >= len(df):
+                continue
 
-        elif choch_type == 'CHoCH_UP':
-            candidate = lookahead[lookahead['close'] < lookahead['open']]
-            if not candidate.empty:
-                order_blocks.append((timestamp, 'OB_SHORT', candidate['high'].iloc[0], candidate['low'].iloc[0]))
+            row = df.iloc[idx + offset]
+            body_size = abs(row['close'] - row['open'])
+            candle_range = row['high'] - row['low']
+
+            # Güçlü bir gövde varsa OB olarak değerlendir
+            if body_size >= 0.6 * candle_range:
+                if choch_type == 'CHoCH_UP' and row['close'] < row['open']:
+                    order_blocks.append((df.index[idx + offset], "OB_SHORT", row['high'], row['low']))
+                    break
+                elif choch_type == 'CHoCH_DOWN' and row['close'] > row['open']:
+                    order_blocks.append((df.index[idx + offset], "OB_LONG", row['high'], row['low']))
+                    break
+
     return order_blocks
