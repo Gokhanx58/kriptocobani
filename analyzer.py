@@ -1,27 +1,40 @@
-from tvdatafeed import TvDatafeed, Interval
+from signal_generator import generate_signals
 from config import SYMBOLS, INTERVALS
 from send_message import send_signal_to_channel
+from tvdatafeed import TvDatafeed, Interval
+import pandas as pd
 
-# Sinyal geçmişini tutan sözlük
+# Sinyal geçmişi
 last_signals = {}
 
-def get_signal(symbol, interval):
-    # Gerçek analiz yerine örnek (senin analiz fonksiyonunla değiştirilecek)
-    import random
-    return random.choice(["AL", "SAT", "BEKLE"])
+# TradingView verisi çekme fonksiyonu
+def get_ohlcv(symbol, interval):
+    tv = TvDatafeed()
+    tv_interval = Interval.MIN_1 if interval == "1m" else Interval.MIN_5
+    df = tv.get_hist(symbol=symbol, interval=tv_interval, n_bars=100)
+    if df is None or df.empty:
+        return None
+    df = df.sort_index()
+    return df
 
 async def analyze_signals():
     for symbol in SYMBOLS:
         for interval in INTERVALS:
-            new_signal = get_signal(symbol, interval)
+            df = get_ohlcv(symbol, interval)
+            if df is None:
+                continue
+
+            signal_data = generate_signals(df)
+            if not signal_data:
+                signal = "BEKLE"
+            else:
+                signal = signal_data[-1][1]  # En son sinyali al
+
             key = f"{symbol}_{interval}"
 
             if key not in last_signals:
-                # İlk çalıştırmada sinyali gönder
-                await send_signal_to_channel(symbol, interval, new_signal)
-            elif last_signals[key] != new_signal:
-                # Sinyal değiştiyse gönder
-                await send_signal_to_channel(symbol, interval, new_signal)
+                await send_signal_to_channel(symbol, interval, signal)
+            elif last_signals[key] != signal:
+                await send_signal_to_channel(symbol, interval, signal)
 
-            # Güncel sinyali sakla
-            last_signals[key] = new_signal
+            last_signals[key] = signal
