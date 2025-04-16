@@ -1,49 +1,49 @@
-import pandas as pd
-import logging
-from choch_detector import detect_choch
-from order_block_detector import detect_order_blocks
-from fvg_detector import detect_fvg
+import asyncio
+from datetime import datetime
+from analyzer import analyze
+from tvdatafeed import TvDatafeed, Interval
+import telegram
 
-logger = logging.getLogger(__name__)
+# Telegram bot ayarları
+BOT_TOKEN = '7677308602:AAHH7vloPaQ7PqgFdBnJ2DKYy6sjJ5iqaYE'
+CHANNEL_ID = '@GokriptoHan'
+bot = telegram.Bot(token=BOT_TOKEN)
 
+# TradingView login
+tv = TvDatafeed(username='marsticaret1', password='8690Yn678690')
 
-def generate_signals(df):
-    choch_signals = detect_choch(df)
-    order_blocks = detect_order_blocks(df)
-    fvg_zones = detect_fvg(df)
+# Sadece bu semboller analiz edilir
+SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'AVAXUSDT', 'SUIUSDT']
+INTERVALS = [Interval.MIN_1, Interval.MIN_5]
 
-    logger.warning(f"CHOCH: {choch_signals}")
-    logger.warning(f"ORDER BLOCKS: {order_blocks}")
-    logger.warning(f"FVG ZONES: {fvg_zones}")
+last_signals = {}
 
-    final_signals = []
+async def run_signal_loop():
+    while True:
+        for symbol in SYMBOLS:
+            for interval in INTERVALS:
+                df = tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval, n_bars=300)
+                if df is None or df.empty:
+                    continue
 
-    for choch_time, choch_type in choch_signals:
-        choch_index = df.index.get_loc(choch_time)
-        future_range = df.iloc[choch_index + 1:choch_index + 6]  # 5 bar ileriye bak
+                results = analyze(df)
+                if results:
+                    last_time, last_signal = results[-1]
 
-        ob_match = None
-        fvg_match = None
+                    key = f"{symbol}_{interval.value}"
+                    previous_signal = last_signals.get(key)
 
-        for ob_time, ob_type, *_ in order_blocks:
-            if choch_time < ob_time <= choch_time + pd.Timedelta(minutes=3):
-                if (choch_type == 'CHoCH_UP' and ob_type == 'OB_LONG') or \
-                   (choch_type == 'CHoCH_DOWN' and ob_type == 'OB_SHORT'):
-                    ob_match = (ob_time, ob_type)
-                    break
+                    if previous_signal != last_signal:
+                        last_signals[key] = last_signal
 
-        for fvg_time, fvg_type in fvg_zones:
-            if choch_time < fvg_time <= choch_time + pd.Timedelta(minutes=3):
-                if (choch_type == 'CHoCH_UP' and fvg_type == 'FVG_UP') or \
-                   (choch_type == 'CHoCH_DOWN' and fvg_type == 'FVG_DOWN'):
-                    fvg_match = (fvg_time, fvg_type)
-                    break
+                        message = (
+                            f"📊 *Sinyal Geldi!*\n"
+                            f"*Sembol:* `{symbol}`\n"
+                            f"*Zaman Dilimi:* `{interval.value}`\n"
+                            f"*Sinyal:* `{last_signal}`\n"
+                            f"🕒 {last_time.strftime('%Y-%m-%d %H:%M')}"
+                        )
 
-        if ob_match and fvg_match:
-            signal_type = 'AL' if choch_type == 'CHoCH_UP' else 'SAT'
-            final_signals.append((choch_time, signal_type))
+                        await bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
 
-    logger.warning(f"FINAL SIGNALS: {final_signals}")
-    logger.warning("====================")
-
-    return final_signals
+        await asyncio.sleep(60)
