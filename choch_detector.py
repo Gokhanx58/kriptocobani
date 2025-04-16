@@ -1,27 +1,36 @@
 import pandas as pd
 
-def detect_structure(df: pd.DataFrame):
+def detect_choch(df):
     df = df.copy()
-    df['HH'] = (df['high'] > df['high'].shift(1)) & (df['high'] > df['high'].shift(-1))
-    df['LL'] = (df['low'] < df['low'].shift(1)) & (df['low'] < df['low'].shift(-1))
-    return df
-
-def detect_choch(df: pd.DataFrame):
-    df = detect_structure(df)
     choch_signals = []
-    trend = None
+
+    df['high_shift'] = df['high'].shift(1)
+    df['low_shift'] = df['low'].shift(1)
+    df['close_shift'] = df['close'].shift(1)
+
+    structure = None  # Başlangıç yönü bilinmiyor
 
     for i in range(2, len(df)):
-        row = df.iloc[i]
-        if trend == 'down' and row['HH']:
-            choch_signals.append((df.index[i], 'CHoCH_UP'))
-            trend = 'up'
-        elif trend == 'up' and row['LL']:
-            choch_signals.append((df.index[i], 'CHoCH_DOWN'))
-            trend = 'down'
-        elif trend is None:
-            if row['HH']:
-                trend = 'up'
-            elif row['LL']:
-                trend = 'down'
+        prev_high = df.iloc[i - 1]['high']
+        prev_low = df.iloc[i - 1]['low']
+        current_close = df.iloc[i]['close']
+
+        # İlk yönü belirle (yukarı mı aşağı mı gidiyoruz)
+        if structure is None:
+            if df.iloc[i]['high'] > df.iloc[i - 2]['high']:
+                structure = "HIGH"
+            elif df.iloc[i]['low'] < df.iloc[i - 2]['low']:
+                structure = "LOW"
+            continue
+
+        # CHoCH aşağı yönlü
+        if structure == "HIGH" and df.iloc[i]['low'] < df.iloc[i - 2]['low']:
+            choch_signals.append((df.index[i], "CHoCH_DOWN"))
+            structure = "LOW"
+
+        # CHoCH yukarı yönlü
+        elif structure == "LOW" and df.iloc[i]['high'] > df.iloc[i - 2]['high']:
+            choch_signals.append((df.index[i], "CHoCH_UP"))
+            structure = "HIGH"
+
     return choch_signals
