@@ -1,31 +1,31 @@
-from signal_generator import generate_signals
-from config import SYMBOLS, INTERVALS
-from send_message import send_signal_to_channel
-from tvdatafeed import TvDatafeed, Interval
-import pandas as pd
+import logging
+from choch_detector import detect_choch
+from order_block_detector import detect_order_blocks
+from fvg_detector import detect_fvg_zones
 
-last_signals = {}
+def analyze(df):
+    choch_list = detect_choch(df)
+    order_blocks = detect_order_blocks(df, choch_list)
+    fvg_zones = detect_fvg_zones(df, choch_list)
 
-def get_ohlcv(symbol, interval):
-    tv = TvDatafeed(username="marsticaret1", password="8690Yn678690")
-    tv_interval = Interval.MIN_1 if interval == "1m" else Interval.MIN_5
-    df = tv.get_hist(symbol=symbol, interval=tv_interval, n_bars=100)
-    if df is None or df.empty:
-        return None
-    df = df.sort_index()
-    return df
+    final_signals = []
 
-async def analyze_signals():
-    for symbol in SYMBOLS:
-        for interval in INTERVALS:
-            df = get_ohlcv(symbol, interval)
-            if df is None:
-                continue
+    for time, choch_type in choch_list:
+        # Aynı timestamp’li OB ve FVG olup olmadığını kontrol et
+        ob_matches = [ob for ob in order_blocks if ob[0] == time]
+        fvg_matches = [fvg for fvg in fvg_zones if fvg[0] == time]
 
-            signal_data = generate_signals(df)
-            signal = signal_data[-1][1] if signal_data else "BEKLE"
+        if ob_matches and fvg_matches:
+            if choch_type == "CHoCH_UP":
+                final_signals.append((time, "AL"))
+            elif choch_type == "CHoCH_DOWN":
+                final_signals.append((time, "SAT"))
 
-            key = f"{symbol}_{interval}"
-            if key not in last_signals or last_signals[key] != signal:
-                await send_signal_to_channel(symbol, interval, signal)
-            last_signals[key] = signal
+    # Loglama (debug için)
+    logging.warning(f"CHOCH: {choch_list}")
+    logging.warning(f"ORDER BLOCKS: {order_blocks}")
+    logging.warning(f"FVG ZONES: {fvg_zones}")
+    logging.warning(f"FINAL SIGNALS: {final_signals}")
+    logging.warning("====================")
+
+    return final_signals
