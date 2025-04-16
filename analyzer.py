@@ -4,10 +4,8 @@ from send_message import send_signal_to_channel
 from tvdatafeed import TvDatafeed, Interval
 import pandas as pd
 
-# Sinyal geçmişi
 last_signals = {}
 
-# TradingView verisi çekme fonksiyonu
 def get_ohlcv(symbol, interval):
     tv = TvDatafeed()
     tv_interval = Interval.MIN_1 if interval == "1m" else Interval.MIN_5
@@ -25,16 +23,9 @@ async def analyze_signals():
                 continue
 
             signal_data = generate_signals(df)
-            if not signal_data:
-                signal = "BEKLE"
-            else:
-                signal = signal_data[-1][1]  # En son sinyali al
+            signal = signal_data[-1][1] if signal_data else "BEKLE"
 
             key = f"{symbol}_{interval}"
-
-            if key not in last_signals:
+            if key not in last_signals or last_signals[key] != signal:
                 await send_signal_to_channel(symbol, interval, signal)
-            elif last_signals[key] != signal:
-                await send_signal_to_channel(symbol, interval, signal)
-
             last_signals[key] = signal
