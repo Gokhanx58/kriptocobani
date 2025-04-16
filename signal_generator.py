@@ -1,43 +1,49 @@
-from choch_detector import detect_choch
-from order_block_detector import detect_order_blocks
-from fvg_detector import detect_fvg
-import logging
+import asyncio
+from datetime import datetime
+from analyzer import analyze
+from tvdatafeed import TvDatafeed, Interval
+import telegram
 
-def generate_signal(df):
-    try:
-        # CHoCH tespiti
-        choch_list = detect_choch(df)
-        if not choch_list:
-            return None
+# Telegram bot ayarları
+BOT_TOKEN = '7677308602:AAHH7vloPaQ7PqgFdBnJ2DKYy6sjJ5iqaYE'
+CHANNEL_ID = '@GokriptoHan'
+bot = telegram.Bot(token=BOT_TOKEN)
 
-        last_choch_time, last_choch_dir = choch_list[-1]
+# TradingView login
+tv = TvDatafeed(username='marsticaret1', password='8690Yn678690')
 
-        # CHoCH sonrası son 3 barı analiz et
-        subset = df[df.index >= last_choch_time]
+# Sadece bu semboller analiz edilir
+SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'AVAXUSDT', 'SUIUSDT']
+INTERVALS = [Interval.MIN_1, Interval.MIN_5]
 
-        if subset.empty:
-            return None
+last_signals = {}
 
-        # OB tespiti (bu aralıkta)
-        order_blocks = detect_order_blocks(subset)
-        if not order_blocks:
-            logging.warning("OB bulunamadı")
-            return None
+async def run_signal_loop():
+    while True:
+        for symbol in SYMBOLS:
+            for interval in INTERVALS:
+                df = tv.get_hist(symbol=symbol, exchange='MEXC', interval=interval, n_bars=300)
+                if df is None or df.empty:
+                    continue
 
-        # FVG tespiti (bu aralıkta)
-        fvg_zones = detect_fvg(subset)
-        if not fvg_zones:
-            logging.warning("FVG bulunamadı")
-            return None
+                results = analyze(df)
+                if results:
+                    last_time, last_signal = results[-1]
 
-        # Sinyal üretimi → CHoCH yönüne göre AL/SAT belirle
-        if last_choch_dir == 'CHoCH_UP':
-            return (last_choch_time, 'AL')
-        elif last_choch_dir == 'CHoCH_DOWN':
-            return (last_choch_time, 'SAT')
-        else:
-            return None
+                    key = f"{symbol}_{interval.value}"
+                    previous_signal = last_signals.get(key)
 
-    except Exception as e:
-        logging.error(f"Sinyal üretiminde hata: {e}")
-        return None
+                    if previous_signal != last_signal:
+                        last_signals[key] = last_signal
+
+                        message = (
+                            f"📊 *Sinyal Geldi!*\n"
+                            f"*Sembol:* `{symbol}`\n"
+                            f"*Zaman Dilimi:* `{interval.value}`\n"
+                            f"*Sinyal:* `{last_signal}`\n"
+                            f"🕒 {last_time.strftime('%Y-%m-%d %H:%M')}"
+                        )
+
+                        await bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
+
+        await asyncio.sleep(60)
