@@ -1,7 +1,6 @@
 from enum import Enum
 
 class Interval(Enum):
-    """TradingView veri zaman dilimleri"""
     INTERVAL_1_MINUTE = "1"
     INTERVAL_5_MINUTE = "5"
     INTERVAL_15_MINUTE = "15"
