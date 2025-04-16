@@ -1,15 +1,13 @@
 from tvdatafeed import TvDatafeed, Interval
 import pandas as pd
-from telegram_send import send_signal_to_channel
-from config import SYMBOLS, INTERVALS, TOLERANCE
+from send_message import send_signal_to_channel
+from config import SYMBOLS, INTERVALS
 from utils import round_to_nearest
-import datetime
-
-tv = TvDatafeed()
 
 last_signal_state = {}
+tv = TvDatafeed()
 
-def analyze_signals():
+async def analyze_signals():
     for symbol in SYMBOLS:
         for interval in INTERVALS:
             try:
