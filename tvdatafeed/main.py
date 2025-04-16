@@ -1,5 +1,5 @@
+from .const import Interval
 from .tvsession import TvDatafeed
-from .interval import Interval
 
 INTERVAL_MAP = {
     "1m": Interval.min1,
