@@ -1,7 +1,7 @@
-import asyncio
 from signal_loop import start_signal_loop
+import asyncio
 
-print("🚀 Bot başlatılıyor...")
+print("\n🚀 Sistem başlatılıyor...")
 
 if __name__ == "__main__":
     asyncio.run(start_signal_loop())
