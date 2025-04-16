@@ -1,23 +1,19 @@
-import httpx
+from telegram import Bot
 from config import TELEGRAM_TOKEN, TELEGRAM_CHANNEL
 
-async def send_signal_to_channel(symbol, interval, signal_type, signal_price, current_price):
-    strength = "GÜÇLÜ " if "GÜÇLÜ" in signal_type else ""
-    emoji = "✅" if "AL" in signal_type else "❌"
+bot = Bot(token=TELEGRAM_TOKEN)
 
-    message = (
-        f"Coin: {symbol}\n"
-        f"⏱️ Zaman: {interval}\n"
+def format_signal_message(symbol, interval, signal, signal_price, last_close):
+    return (
+        f"📈 {symbol.upper()} | {interval}\n"
         f"📊 Sistem: CHoCH + Order Block + FVG\n"
-        f"📌 Sinyal: {emoji} {strength}{signal_type.replace('GÜÇLÜ ', '')}\n"
-        f"📍 Sinyal Geldiği Fiyat: {signal_price}\n"
-        f"💰 Şu Anki Fiyat: {current_price}"
+        f"📌 Sinyal: {'✅ AL' if 'AL' in signal else '❌ SAT'}\n"
+        f"💰 Fiyat: {round(signal_price, 2)} → {round(last_close, 2)}"
     )
 
-    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHANNEL, "text": message}
+async def send_signal_to_channel(symbol, interval, signal, signal_price, last_close):
     try:
-        async with httpx.AsyncClient() as client:
-            await client.post(url, data=payload)
+        message = format_signal_message(symbol, interval, signal, signal_price, last_close)
+        await bot.send_message(chat_id=TELEGRAM_CHANNEL, text=message)
     except Exception as e:
-        print(f"Telegram gönderim hatası: {e}")
+        print(f"📛 Telegram mesaj gönderme hatası: {e}")
