@@ -1,11 +1,7 @@
 services:
-  - type: background
-    name: telegram-crypto-bot
+  - type: worker
+    name: gokriptohan-worker
     env: python
-    plan: starter
-    region: frankfurt
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python main.py"
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.10.13
+    autoDeploy: true
