@@ -1,54 +1,26 @@
-import asyncio
-from datetime import datetime
-from analyzer import analyze
-from tvdatafeed import TvDatafeed, Interval
-import telegram
-import logging
+from choch_detector import detect_choch
+from order_block_detector import detect_order_blocks
+from fvg_detector import detect_fvg
+from datetime import timedelta
 
-# Telegram bot ayarları
-BOT_TOKEN = '7677308602:AAHH7vloPaQ7PqgFdBnJ2DKYy6sjJ5iqaYE'
-CHANNEL_ID = '@GokriptoHan'
-bot = telegram.Bot(token=BOT_TOKEN)
+def analyze(df):
+    final_signals = []
 
-# TradingView login
-tv = TvDatafeed(username='marsticaret1', password='8690Yn678690')
+    # CHoCH tespiti
+    choch_list = detect_choch(df)
+    ob_list = detect_order_blocks(df)
+    fvg_list = detect_fvg(df)
 
-# Sadece bu semboller analiz edilir
-SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'AVAXUSDT', 'SUIUSDT']
-INTERVALS = [Interval.MIN_1, Interval.MIN_5]
+    for ts, choch_signal in choch_list[-10:]:
+        window_start = ts
+        window_end = ts + timedelta(minutes=3)
 
-last_signals = {}
-BARS = 150  # ← HATALI DEĞİŞKEN YERİNE DOĞRU DEĞER
+        # OB filtrele
+        relevant_obs = [ob for ob in ob_list if window_start <= ob[0] <= window_end]
+        # FVG filtrele
+        relevant_fvgs = [fvg for fvg in fvg_list if window_start <= fvg[0] <= window_end]
 
-async def run_signal_loop():
-    while True:
-        for symbol in SYMBOLS:
-            for interval in INTERVALS:
-                try:
-                    df = tv.get_hist(symbol=symbol, interval=interval, n_bars=BARS)
-                    if df is None or df.empty:
-                        continue
+        if relevant_obs and relevant_fvgs:
+            final_signals.append((ts, "AL" if choch_signal == "CHoCH_UP" else "SAT"))
 
-                    results = analyze(df)
-                    if results:
-                        last_time, last_signal = results[-1]
-
-                        key = f"{symbol}_{interval.value}"
-                        previous_signal = last_signals.get(key)
-
-                        if previous_signal != last_signal:
-                            last_signals[key] = last_signal
-
-                            message = (
-                                f"📊 *Sinyal Geldi!*\n"
-                                f"*Sembol:* `{symbol}`\n"
-                                f"*Zaman Dilimi:* `{interval.value}`\n"
-                                f"*Sinyal:* `{last_signal}`\n"
-                                f"🕒 {last_time.strftime('%Y-%m-%d %H:%M')}`"
-                            )
-
-                            await bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
-                except Exception as e:
-                    logging.error(f"{symbol} - {interval}: {e}")
-
-        await asyncio.sleep(60)
+    return final_signals
