@@ -1,6 +1,11 @@
 services:
-  - type: worker
-    name: kripto-analiz-bot
+  - type: background
+    name: telegram-crypto-bot
     env: python
+    plan: starter
+    region: frankfurt
     buildCommand: "pip install -r requirements.txt"
     startCommand: "python main.py"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.13
