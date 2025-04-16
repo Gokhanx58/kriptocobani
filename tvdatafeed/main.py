@@ -10,7 +10,7 @@ class TvDatafeed:
         self,
         symbol: str,
         exchange: str = 'BINANCE',
-        interval: Interval = Interval.in_1_minute,
+        interval: Interval = Interval.MIN_1,
         n_bars: int = 5000,
     ) -> pd.DataFrame:
 
