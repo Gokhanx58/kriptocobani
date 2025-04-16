@@ -1,26 +1,28 @@
-def detect_fvg(df):
+import pandas as pd
+
+def detect_fvg_zones(df: pd.DataFrame, lookback: int = 30):
     fvg_zones = []
 
     for i in range(2, len(df)):
-        prev_candle = df.iloc[i - 2]
-        curr_candle = df.iloc[i]
+        high_2 = df['high'].iloc[i - 2]
+        low_0 = df['low'].iloc[i]
 
-        # FVG yukarı yönlü: düşük > önceki yüksek
-        if curr_candle['low'] > prev_candle['high']:
+        if df['low'].iloc[i - 1] > high_2:
+            # Fair Value Gap (Boşluk) oluşmuş: düşüş yönlü
             fvg_zones.append({
                 'timestamp': df.index[i],
-                'type': 'FVG_BULLISH',
-                'gap_above': prev_candle['high'],
-                'gap_below': curr_candle['low']
+                'direction': 'down',
+                'gap_high': df['low'].iloc[i - 1],
+                'gap_low': high_2
             })
 
-        # FVG aşağı yönlü: yüksek < önceki düşük
-        elif curr_candle['high'] < prev_candle['low']:
+        elif df['high'].iloc[i - 1] < low_0:
+            # Fair Value Gap (Boşluk) oluşmuş: yükseliş yönlü
             fvg_zones.append({
                 'timestamp': df.index[i],
-                'type': 'FVG_BEARISH',
-                'gap_above': curr_candle['high'],
-                'gap_below': prev_candle['low']
+                'direction': 'up',
+                'gap_high': low_0,
+                'gap_low': df['high'].iloc[i - 1]
             })
 
     return fvg_zones
