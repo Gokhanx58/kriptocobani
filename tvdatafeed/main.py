@@ -1,3 +1,4 @@
+from .const import Interval
 import os
 import re
 import json
