@@ -1,18 +1,25 @@
 import pandas as pd
+from typing import List, Tuple
 
-def detect_fvg(df: pd.DataFrame):
-    fvg_zones = []
-
+def detect_fvg(df: pd.DataFrame) -> List[Tuple[pd.Timestamp, str]]:
+    fvg_signals = []
+    
+    # FVG: Fair Value Gap, body gap mantığına göre tespit yapılır
     for i in range(2, len(df)):
-        # FVG_DOWN: önceki iki mumun low'u > son mumun high'ı
-        if df['low'].iloc[i - 2] > df['high'].iloc[i - 1] and df['low'].iloc[i - 1] > df['high'].iloc[i]:
-            ts = df.index[i]
-            fvg_zones.append((ts, 'FVG_DOWN'))
+        prev2_high = df['high'].iloc[i - 2]
+        prev2_low = df['low'].iloc[i - 2]
+        prev1_high = df['high'].iloc[i - 1]
+        prev1_low = df['low'].iloc[i - 1]
+        curr_open = df['open'].iloc[i]
+        curr_close = df['close'].iloc[i]
+        curr_time = df.index[i]
 
-        # FVG_UP: önceki iki mumun high'ı < son mumun low'u
-        elif df['high'].iloc[i - 2] < df['low'].iloc[i - 1] and df['high'].iloc[i - 1] < df['low'].iloc[i]:
-            ts = df.index[i]
-            fvg_zones.append((ts, 'FVG_UP'))
+        # Gap up: önceki 2 mumun en düşük seviyesi, son muma göre daha yüksek
+        if prev2_low > curr_high := max(curr_open, curr_close):
+            fvg_signals.append((curr_time, 'FVG_UP'))
 
-    print("Tespit edilen FVG'ler:", fvg_zones)
-    return fvg_zones
+        # Gap down: önceki 2 mumun en yüksek seviyesi, son muma göre daha düşük
+        elif prev2_high < curr_low := min(curr_open, curr_close):
+            fvg_signals.append((curr_time, 'FVG_DOWN'))
+
+    return fvg_signals
