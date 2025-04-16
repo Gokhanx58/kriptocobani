@@ -9,5 +9,5 @@ def send_telegram_message(message: str):
         "parse_mode": "HTML"
     }
     response = requests.post(url, data=data)
-    print(f"Telegram mesaj yanit: {response.status_code} - {response.text}")
+    print(f"Telegram mesaj yanıtı: {response.status_code} - {response.text}")
     return response.status_code == 200
