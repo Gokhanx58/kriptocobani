@@ -1,2 +1,2 @@
 from .main import TvDatafeed
-from .main import Interval
+from .const import Interval
