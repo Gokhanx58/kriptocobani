@@ -1,12 +1,12 @@
+# analyzer.py
 from tvdatafeed import TvDatafeed, Interval
 import pandas as pd
 from send_message import send_telegram_message
 from config import SYMBOLS, INTERVALS, TOLERANCE
-from utils import round_to_nearest
 import datetime
 
-tv = TvDatafeed()
 last_signal_state = {}
+tv = TvDatafeed()
 
 def analyze_signals():
     for symbol in SYMBOLS:
@@ -39,29 +39,36 @@ def analyze_signals():
                     signal = "GÜÇLÜ SAT"
                 elif signal_strength == -1:
                     signal = "SAT"
-                else:
-                    signal = "BEKLE"
 
                 key = f"{symbol}_{interval}"
                 previous_signal = last_signal_state.get(key)
 
                 if signal != "BEKLE" and signal != previous_signal:
                     last_signal_state[key] = signal
-
                     now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
 
-                    message = f"""🪙 Coin: {symbol}
-⏱️ Zaman: {interval}
-📊 Sistem: CHoCH + Order Block + FVG (AL-GÜÇLÜ AL - SAT-GÜÇLÜ SAT)
-📌 Sinyal: ✅ {signal}
-📈 Sinyal Geldiği Fiyat: {round_to_nearest(signal_price, TOLERANCE)}
-📉 Şu Anki Fiyat: {round_to_nearest(last_close, TOLERANCE)}
-⏰ Zaman: {now}
-"""
+                    yorum = {
+                        "GÜÇLÜ AL": "Yükseliş beklentisi çok güçlü",
+                        "AL": "Yükseliş bekleniyor",
+                        "GÜÇLÜ SAT": "Düşüş baskısı yüksek",
+                        "SAT": "Geri çekilme bekleniyor"
+                    }.get(signal, "Analiz yapılıyor...")
+
+                    emoji = "✅" if "AL" in signal else "❌"
+
+                    message = (
+                        f"🪙 Coin: {symbol}\n"
+                        f"⏱️ Zaman: {interval}\n"
+                        f"📊 Sistem: CHoCH + Order Block + FVG\n"
+                        f"📌 Sinyal: {emoji} {signal} → {yorum}\n"
+                        f"📍 Sinyal Geldiği Fiyat: {signal_price:.4f}\n"
+                        f"💰 Şu Anki Fiyat: {last_close:.4f}"
+                    )
+
                     send_telegram_message(message)
 
             except Exception as e:
-                print(f"Hata: {e}")
+                print(f"Hata ({symbol} - {interval}): {e}")
 
 def check_choch(df):
     return "AL" if df['close'].iloc[-1] > df['close'].iloc[-2] else "SAT"
