@@ -25,7 +25,7 @@ def generate_signals(df: pd.DataFrame):
 
         matching_fvg = [
             fvg for fvg in fvg_zones
-            if abs((fvg[0] - ts).total_seconds()) < 180
+            if abs((fvg[0] - ts).total_seconds()) <= 300  # tolerans 5 dakika
         ]
 
         if not matching_fvg:
