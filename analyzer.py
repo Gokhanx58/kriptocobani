@@ -1,49 +1,75 @@
-from config import SYMBOLS, INTERVALS
+import pandas as pd
+from datetime import datetime
 from tvdatafeed import TvDatafeed, Interval
-from telegram_send import send_signal_to_channel
+from telegram import Bot
+from utils import round_to_nearest
 
-tv = TvDatafeed()
+tv = TvDatafeed(username="marsticaret1", password="8690Yn678690")
+bot = Bot(token="7677308602:AAHH7vloPaQ7PqgFdBnJ2DKYy6sjJ5iqaYE")
+CHANNEL_ID = "@GokriptoHan"
 
-last_signal_state = {}
+last_sent = {}
 
-def get_signal_strength(choch, ob, fvg):
-    return [choch, ob, fvg].count("AL") - [choch, ob, fvg].count("SAT")
+symbols = ["BTCUSDT", "ETHUSDT", "AVAXUSDT", "SOLUSDT", "SUIUSDT"]
+intervals = {
+    "1m": Interval.in_1_minute,
+    "5m": Interval.in_5_minute
+}
 
-async def analyze_signals():
-    for symbol in SYMBOLS:
-        for interval in INTERVALS:
+def detect_signal(df):
+    latest_close = df["close"].iloc[-1]
+    previous_close = df["close"].iloc[-2]
+    signal_price = df["close"].iloc[-3]
+
+    if latest_close > previous_close and previous_close > df["close"].iloc[-3]:
+        return "AL", signal_price
+    elif latest_close < previous_close and previous_close < df["close"].iloc[-3]:
+        return "SAT", signal_price
+    return "BEKLE", None
+
+async def analyze_signals(initial=False):
+    for symbol in symbols:
+        for int_name, int_enum in intervals.items():
             try:
-                df = tv.get_hist(symbol=symbol, exchange='BINANCE', interval=Interval.__members__[interval], n_bars=100)
-                if df is None or df.empty or len(df) < 5:
+                print(f"🔍 Analiz ediliyor: {symbol}-{int_name}")
+                df = tv.get_hist(symbol=symbol, exchange="MEXC", interval=int_enum, n_bars=200)
+                if df is None or df.empty:
+                    print(f"⛔ Veri alınamadı: {symbol}-{int_name}")
                     continue
 
-                df.dropna(inplace=True)
-                df.reset_index(inplace=True)
+                sinyal, sinyal_fiyati = detect_signal(df)
+                anlik_fiyat = df["close"].iloc[-1]
+                key = f"{symbol}_{int_name}"
 
-                signal_price = df['close'].iloc[-2]
-                last_close = df['close'].iloc[-1]
-
-                choch = "AL" if df['close'].iloc[-1] > df['close'].iloc[-2] else "SAT"
-                ob = "AL" if df['low'].iloc[-1] > df['low'].iloc[-2] else "SAT"
-                fvg = "AL" if df['high'].iloc[-1] > df['high'].iloc[-2] else "SAT"
-
-                signal_strength = get_signal_strength(choch, ob, fvg)
-
-                if signal_strength >= 2:
-                    signal = "GÜÇLÜ AL"
-                elif signal_strength == 1:
-                    signal = "AL"
-                elif signal_strength <= -2:
-                    signal = "GÜÇLÜ SAT"
-                elif signal_strength == -1:
-                    signal = "SAT"
-                else:
-                    signal = "BEKLE"
-
-                key = f"{symbol}_{interval}"
-                if signal != "BEKLE" and signal != last_signal_state.get(key):
-                    last_signal_state[key] = signal
-                    await send_signal_to_channel(symbol, interval, signal, signal_price, last_close)
-
+                if initial or key not in last_sent:
+                    last_sent[key] = sinyal
+                    await send_signal(symbol, int_name, sinyal, sinyal_fiyati, anlik_fiyat)
+                elif sinyal != last_sent[key]:
+                    await send_signal(symbol, int_name, sinyal, sinyal_fiyati, anlik_fiyat)
+                    last_sent[key] = sinyal
             except Exception as e:
-                print(f"[{symbol}-{interval}] Hata: {e}")
+                print(f"❌ {symbol} {int_name} analiz hatası: {e}")
+
+async def send_signal(symbol, interval, signal, signal_price, current_price):
+    emoji = "✅" if "AL" in signal else "❌" if "SAT" in signal else "⏳"
+    yorum = {
+        "Güçlü AL": "Yükseliş beklentisi çok güçlü",
+        "AL": "Yükseliş bekleniyor",
+        "Güçlü SAT": "Düşüş baskısı yüksek",
+        "SAT": "Geri çekilme bekleniyor",
+        "BEKLE": "Sinyal oluşumu bekleniyor"
+    }.get(signal, "Analiz yapılıyor...")
+
+    mesaj = (
+        f"🪙 Coin: {symbol}\n"
+        f"⏱️ Zaman: {interval}\n"
+        f"📊 Sistem: CHoCH + Order Block + FVG\n"
+        f"📌 Sinyal: {emoji} {signal} → {yorum}\n"
+        f"💹 Sinyal Geldiği Fiyat: {round_to_nearest(signal_price)}\n"
+        f"💰 Şu Anki Fiyat: {round_to_nearest(current_price)}"
+    )
+    try:
+        print(f"📬 Telegram mesajı gönderiliyor: {mesaj}")
+        await bot.send_message(chat_id=CHANNEL_ID, text=mesaj)
+    except Exception as e:
+        print(f"📛 Telegram gönderim hatası: {e}")
