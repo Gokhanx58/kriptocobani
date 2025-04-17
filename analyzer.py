@@ -1,25 +1,27 @@
-import logging
-from choch_detector import detect_choch
-from order_block_detector import detect_order_blocks
-from fvg_detector import detect_fvg_zones
+# analyzer.py
+from binance_client import get_klines
+from signal_generator import generate_signal
 
-def analyze(df):
-    choch = detect_choch(df)
-    if not choch:
-        return []
+def analyze_signals():
+    import logging
+    from config import SYMBOLS, INTERVALS, BARS
+    from telegram_bot import send_telegram
 
-    obs  = detect_order_blocks(df, choch)
-    fvgs = detect_fvg_zones(df, choch)
+    for symbol in SYMBOLS:
+        for interval in INTERVALS:
+            df = get_klines(symbol, interval, limit=BARS)
+            if df.empty:
+                logging.warning(f"{symbol}-{interval}: Veri yok veya hata.")
+                continue
 
-    signals = []
-    for ts, direction in choch:
-        ob_ok  = any(abs((ts - o[0]).total_seconds()) <= 180 for o in obs)
-        fvg_ok = any(abs((ts - f[0]).total_seconds()) <= 180 for f in fvgs)
-        if ob_ok and fvg_ok:
-            # güçlülük: OB ve FVG çakıştığı mum hacmine veya gap büyüklüğüne bakıp ekleyebilirsiniz.
-            strength = ""  # ya da "GÜÇLÜ " mantığı eklenebilir
-            sig = f"{strength}AL" if direction=="CHoCH_UP" else f"{strength}SAT"
-            signals.append((ts, sig))
-
-    logging.info(f"FINAL SIGNALS: {signals}")
-    return signals
+            signals = generate_signal(df)
+            if signals:
+                ts, sig = signals[-1]
+                msg = (
+                    f"📊 *Sistem:* CHoCH+OB+FVG\n"
+                    f"*Sembol:* `{symbol}`\n"
+                    f"*Zaman:* `{interval}`\n"
+                    f"*Sinyal:* `{sig}`\n"
+                    f"🕒 {ts.strftime('%Y-%m-%d %H:%M')}"
+                )
+                send_telegram(msg)
