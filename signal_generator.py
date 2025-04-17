@@ -7,27 +7,24 @@ def generate_signal(df):
     try:
         choch_list = detect_choch(df)
         if not choch_list:
-            logging.warning("CHOCH: []")
+            logging.debug("CHoCH yok, sinyal üretilmedi.")
             return []
+        ob_list = detect_order_blocks(df, choch_list)
+        fvg_list = detect_fvg_zones(df)
+        logging.debug(f"CHOCH: {choch_list}")
+        logging.debug(f"ORDER BLOCKS: {ob_list}")
+        logging.debug(f"FVG ZONES: {fvg_list}")
 
-        ob_list  = detect_order_blocks(df, choch_list)
-        fvg_list = detect_fvg_zones(df)  # artık tuple listesi
-
-        logging.warning(f"CHOCH: {choch_list}")
-        logging.warning(f"ORDER BLOCKS: {ob_list}")
-        logging.warning(f"FVG ZONES: {fvg_list}")
-
-        final = []
-        for ts, direction in choch_list:
-            ob_ok  = any(abs((ts - ob_ts).total_seconds()) <= 180 for ob_ts, *_ in ob_list)
-            fvg_ok = any(abs((ts - fvg_ts).total_seconds()) <= 180 for fvg_ts, *_ in fvg_list)
+        final_signals = []
+        for ts, direc in choch_list:
+            ob_ok = any(abs((ts - ob[0]).total_seconds()) <= 180 for ob in ob_list)
+            fvg_ok = any(abs((ts - fvg[0]).total_seconds()) <= 180 for fvg in fvg_list)
             if ob_ok and fvg_ok:
-                sig = 'AL' if direction == 'CHoCH_UP' else 'SAT'
-                final.append((ts, sig))
-
-        logging.warning(f"FINAL SIGNALS: {final}")
-        return final
-
+                sig = 'AL' if direc == 'CHoCH_UP' else 'SAT'
+                final_signals.append((ts, sig))
+                logging.info(f"FINAL_SIGNAL: {sig} @ {ts}")
+        logging.debug(f"FINAL SIGNALS: {final_signals}")
+        return final_signals
     except Exception as e:
-        logging.error(f"Sinyal üretiminde hata: {e}")
+        logging.error(f"Sinyal üretim hatası: {e}")
         return []
