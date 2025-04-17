@@ -7,19 +7,22 @@ def detect_order_blocks(df: pd.DataFrame, choch_signals):
         if ts not in df.index:
             continue
         idx = df.index.get_loc(ts)
-        look = df.iloc[idx+1:idx+4]
-        if look.empty: continue
+        window = df.iloc[idx+1:idx+4]
+        if window.empty:
+            continue
 
         if direction == "CHoCH_UP":
-            # bekleyen ilk kırmızı mum
-            for t, row in look.iterrows():
-                if row.close < row.open:
-                    obs.append((t, "OB_SHORT", row.high, row.low))
+            # OB SHORT: kırmızı mum
+            for t, candle in window.iterrows():
+                if candle['close'] < candle['open']:
+                    obs.append((t, "OB_SHORT", candle['high'], candle['low']))
                     break
+
         else:  # CHoCH_DOWN
-            for t, row in look.iterrows():
-                if row.close > row.open:
-                    obs.append((t, "OB_LONG", row.high, row.low))
+            # OB LONG: yeşil mum
+            for t, candle in window.iterrows():
+                if candle['close'] > candle['open']:
+                    obs.append((t, "OB_LONG", candle['high'], candle['low']))
                     break
 
     logging.debug(f"ORDER BLOCKS: {obs}")
