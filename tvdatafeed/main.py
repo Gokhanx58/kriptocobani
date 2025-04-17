@@ -1,32 +1,37 @@
 import pandas as pd
 from datetime import datetime, timedelta
 from .session import TvSession
+from .interval import Interval
 
 class TvDatafeed:
-    def __init__(self, username=None, password=None, session=None, session_signature=None, tv_ecuid=None):
-        # Initialize session (either via cookies or login)
-        if session and session_signature:
-            self.session = TvSession(session=session, session_signature=session_signature).session
-            if tv_ecuid:
-                self.session.cookies.update({"tv_ecuid": tv_ecuid})
-        else:
-            self.session = TvSession(username=username, password=password).session
+    """
+    TvDatafeed: TradingView tarihsel veri çekicisi.
+    Gerçek API olmadığı için burada örnek rasgele veri döndürüyor,
+    ama session kullanımı hazır durumda.
+    """
+    def __init__(self,
+                 sessionid: str,
+                 sessionid_sign: str,
+                 tv_ecuid: str):
+        self.session = TvSession(sessionid, sessionid_sign, tv_ecuid).session
 
-    def get_hist(self, symbol: str, interval, n_bars=200):
+    def get_hist(self,
+                 symbol: str,
+                 interval: Interval = Interval.MIN_1,
+                 n_bars: int = 100) -> pd.DataFrame:
         """
-        Dummy historical data generator.
-        Replace with actual TradingView scraping logic or API calls.
+        Son n_bars kadar OHLCV verisini getirir (simülasyon).
+        interval.value: '1m' veya '5m'
         """
         now = datetime.utcnow()
-        minutes = int(interval.value.rstrip('m'))
-        dates = [now - timedelta(minutes=i * minutes) for i in range(n_bars)][::-1]
-        import random
-        data = {
-            "open": [random.uniform(100, 110) for _ in range(n_bars)],
-            "high": [random.uniform(110, 115) for _ in range(n_bars)],
-            "low": [random.uniform(95, 100) for _ in range(n_bars)],
-            "close": [random.uniform(100, 110) for _ in range(n_bars)],
-            "volume": [random.randint(100, 1000) for _ in range(n_bars)],
-        }
-        df = pd.DataFrame(data, index=pd.to_datetime(dates))
+        # zaman dizisi
+        index = [now - timedelta(minutes=i) for i in range(n_bars)][::-1]
+        df = pd.DataFrame({
+            'open':   pd.np.random.uniform(100, 110, size=n_bars),
+            'high':   pd.np.random.uniform(110, 115, size=n_bars),
+            'low':    pd.np.random.uniform(95, 100, size=n_bars),
+            'close':  pd.np.random.uniform(100, 110, size=n_bars),
+            'volume': pd.np.random.randint(100, 1000, size=n_bars),
+        }, index=index)
+        df.index.name = 'timestamp'
         return df
