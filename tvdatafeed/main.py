@@ -1,20 +1,30 @@
-import pandas as pd
-from datetime import datetime, timedelta
 from .session import TvSession
 from .interval import Interval
 
 class TvDatafeed:
-    def __init__(self, username=None, password=None, session=None, session_signature=None):
-        self.session = TvSession(username, password, session, session_signature)
+    def __init__(self, sessionid=None, session_signature=None, tv_ecuid=None, session=None):
+        # TvSession doğrudan mevcut session veya çerez bilgileri ile oluşturulur
+        self.session = TvSession(
+            sessionid=sessionid,
+            session_signature=session_signature,
+            tv_ecuid=tv_ecuid,
+            session=session
+        ).session
 
-    def get_hist(self, symbol, interval: Interval, n_bars=200):
-        # TODO: Gerçek veriyi self.session üzerinden çekin. Şu an örnek rastgele veri:
-        now = datetime.utcnow()
-        idx = [now - timedelta(minutes=i) for i in range(n_bars)][::-1]
-        return pd.DataFrame({
-            'open':  pd.np.random.uniform(100,110,n_bars),
-            'high':  pd.np.random.uniform(110,115,n_bars),
-            'low':   pd.np.random.uniform(95,100,n_bars),
-            'close': pd.np.random.uniform(100,110,n_bars),
-            'volume': pd.np.random.randint(100,1000,n_bars)
-        }, index=idx)
+    def get_hist(self, symbol, interval=Interval.MIN_1, exchange="BINANCE", n_bars=200):
+        # Burada TradingView REST API ya da websocket entegrasyonu olacak
+        # Örneğin:
+        url = f"https://api.tradingview.com/history?symbol={symbol}&resolution={interval.value}&countback={n_bars}"
+        resp = self.session.get(url)
+        resp.raise_for_status()
+        data = resp.json()
+        # Veriyi DataFrame'e dönüştürme
+        import pandas as pd
+        df = pd.DataFrame({
+            'open': data['o'],
+            'high': data['h'],
+            'low': data['l'],
+            'close': data['c'],
+            'volume': data['v'],
+        }, index=pd.to_datetime(data['t'], unit='s'))
+        return df
