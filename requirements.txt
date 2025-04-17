@@ -1,4 +1,4 @@
-tvdatafeed==1.1.3
+git+https://github.com/eliasaraujo/tvdatafeed.git@master#egg=tvdatafeed
 python-telegram-bot==20.3
 pandas==1.5.3
 numpy==1.24.4
