@@ -1,21 +1,22 @@
 import requests
 
 class TvSession:
-    def __init__(self, sessionid=None, session_signature=None, tv_ecuid=None, session=None):
+    def __init__(self, session=None, sessionid=None, sessionid_sign=None, tv_ecuid=None):
+        # Beklenen çerez bilgileri ya da hazır session
         if session:
             self.session = session
+        elif sessionid and sessionid_sign and tv_ecuid:
+            self.session = self._build_session(sessionid, sessionid_sign, tv_ecuid)
         else:
-            # Gerekli çerez bilgileri sağlanmalı
-            if not all([sessionid, session_signature, tv_ecuid]):
-                raise ValueError("sessionid, session_signature ve tv_ecuid gerekli!")
-            s = requests.Session()
-            # TradingView headerları
-            s.headers.update({
-                "User-Agent": "Mozilla/5.0",
-                "Referer": "https://www.tradingview.com"
-            })
-            # Çerezleri ayarla
-            s.cookies.set('sessionid', sessionid, domain=".tradingview.com")
-            s.cookies.set('session_signature', session_signature, domain=".tradingview.com")
-            s.cookies.set('tv_ecuid', tv_ecuid, domain=".tradingview.com")
-            self.session = s
+            raise ValueError("TvSession: session objesi veya çerez bilgileri (sessionid, sessionid_sign, tv_ecuid) gerekli!")
+
+    def _build_session(self, sessionid, sessionid_sign, tv_ecuid):
+        s = requests.Session()
+        s.cookies.set('sessionid', sessionid, domain='tradingview.com')
+        s.cookies.set('sessionid_sig', sessionid_sign, domain='tradingview.com')
+        s.cookies.set('tv_ecuid', tv_ecuid, domain='tradingview.com')
+        s.headers.update({
+            'Referer': 'https://www.tradingview.com',
+            'User-Agent': 'Mozilla/5.0'
+        })
+        return s
