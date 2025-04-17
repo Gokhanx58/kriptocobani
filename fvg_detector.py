@@ -1,14 +1,23 @@
 import pandas as pd
-import logging
 
-def detect_fvg_zones(df: pd.DataFrame, lookback:int=30):
-    fvg = []
+def detect_fvg_zones(df: pd.DataFrame, lookback: int = 30):
+    """
+    (timestamp, 'FVG_DOWN' | 'FVG_UP', gap_high, gap_low) tuple'ları döner.
+    """
+    fvg_zones = []
+
     for i in range(2, len(df)):
-        h2 = df['high'].iat[i-2]; l1 = df['low'].iat[i-1]; l0 = df['low'].iat[i]
-        if l1 > h2:
-            fvg.append((df.index[i], 'FVG_DOWN', h2, l1))
-        elif df['high'].iat[i-1] < l0:
-            fvg.append((df.index[i], 'FVG_UP', df['high'].iat[i-1], l0))
+        # önce 2 bar geriye bakıp gap kriterini kontrol edelim
+        if df['low'].iloc[i-1] > df['high'].iloc[i-2]:
+            ts = df.index[i]
+            high = df['low'].iloc[i-1]
+            low  = df['high'].iloc[i-2]
+            fvg_zones.append((ts, 'FVG_DOWN', high, low))
 
-    logging.warning(f"FVG ZONES: {fvg}")
-    return fvg
+        elif df['high'].iloc[i-1] < df['low'].iloc[i]:
+            ts = df.index[i]
+            high = df['low'].iloc[i]
+            low  = df['high'].iloc[i-1]
+            fvg_zones.append((ts, 'FVG_UP', high, low))
+
+    return fvg_zones
