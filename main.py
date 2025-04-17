@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from tvdatafeed import TvDatafeed, Interval
+from datafeed import TvDatafeed, Interval
 from signal_generator import generate_signal
 import telegram
 
