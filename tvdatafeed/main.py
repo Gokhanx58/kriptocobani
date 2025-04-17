@@ -9,6 +9,7 @@ class TvDatafeed:
         self.session = TvSession(username, password, session, session_signature)
 
     def get_hist(self, symbol, interval=Interval.MIN_1, n_bars=100):
+        # Bu örnek fonksiyon random veri döner; gerçek API entegrasyonu için kullanıcı adı/şifre ile login olun
         now = datetime.utcnow()
         step = 1 if interval == Interval.MIN_1 else 5
         index = [now - timedelta(minutes=i * step) for i in range(n_bars)][::-1]
