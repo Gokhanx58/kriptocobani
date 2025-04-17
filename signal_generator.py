@@ -1,4 +1,6 @@
-from datafeed import TvDatafeed, Interval
-
+# signal_generator.py (aynı kaldı)
+# importlar vs.
 def generate_signal(df):
-    return analyze(df)
+    # CHoCH, OB, FVG tespitlerinizi çalıştırır
+    # ...
+    return final_signals
