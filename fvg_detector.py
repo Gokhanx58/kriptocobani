@@ -1,28 +1,14 @@
 import pandas as pd
+import logging
 
-def detect_fvg_zones(df: pd.DataFrame, lookback: int = 30):
-    fvg_zones = []
-
+def detect_fvg_zones(df: pd.DataFrame, lookback:int=30):
+    fvg = []
     for i in range(2, len(df)):
-        high_2 = df['high'].iloc[i - 2]
-        low_0 = df['low'].iloc[i]
+        h2 = df['high'].iat[i-2]; l1 = df['low'].iat[i-1]; l0 = df['low'].iat[i]
+        if l1 > h2:
+            fvg.append((df.index[i], 'FVG_DOWN', h2, l1))
+        elif df['high'].iat[i-1] < l0:
+            fvg.append((df.index[i], 'FVG_UP', df['high'].iat[i-1], l0))
 
-        if df['low'].iloc[i - 1] > high_2:
-            # Fair Value Gap (Boşluk) oluşmuş: düşüş yönlü
-            fvg_zones.append({
-                'timestamp': df.index[i],
-                'direction': 'down',
-                'gap_high': df['low'].iloc[i - 1],
-                'gap_low': high_2
-            })
-
-        elif df['high'].iloc[i - 1] < low_0:
-            # Fair Value Gap (Boşluk) oluşmuş: yükseliş yönlü
-            fvg_zones.append({
-                'timestamp': df.index[i],
-                'direction': 'up',
-                'gap_high': low_0,
-                'gap_low': df['high'].iloc[i - 1]
-            })
-
-    return fvg_zones
+    logging.warning(f"FVG ZONES: {fvg}")
+    return fvg
