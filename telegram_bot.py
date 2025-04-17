@@ -1,3 +1,4 @@
+# telegram_bot.py
 import logging
 from telegram import Bot
 from config import TELEGRAM_TOKEN, TELEGRAM_CHANNEL
