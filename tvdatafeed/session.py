@@ -1,31 +1,22 @@
 import requests
 
 class TvSession:
-    def __init__(self, username=None, password=None, session=None, session_signature=None):
-        if session:
-            self.session = session
-        elif username and password:
-            self.session = self.login(username, password, session_signature)
-        else:
-            raise ValueError("Username/password veya session bilgisi gerekli!")
-        self.username = username
-        self.password = password
-
-    def login(self, username, password, session_signature=None):
-        login_url = "https://www.tradingview.com/accounts/signin/"
-        headers = {
-            "Referer": "https://www.tradingview.com",
-            "User-Agent": "Mozilla/5.0"
-        }
-        payload = {"username": username, "password": password}
-        if session_signature:
-            payload["session_signature"] = session_signature
-
-        response = requests.post(login_url, json=payload, headers=headers)
-        if response.status_code != 200:
-            raise Exception(f"Giriş başarısız. Kod: {response.status_code}")
-
-        sess = requests.Session()
-        sess.headers.update(headers)
-        sess.cookies.update(response.cookies)
-        return sess
+    """
+    TradingView oturumu. Opera'dan aldığınız çerez bilgilerini kullanarak
+    oturumu hazırlar. sessionid, sessionid_sign ve tv_ecuid değerlerini
+    ENV değişkeni veya doğrudan buraya yazabilirsiniz.
+    """
+    def __init__(self,
+                 sessionid: str,
+                 sessionid_sign: str,
+                 tv_ecuid: str):
+        self.session = requests.Session()
+        # TradingView çerezleri
+        self.session.cookies.set('sessionid', sessionid, domain='.tradingview.com')
+        self.session.cookies.set('sessionid_sig', sessionid_sign, domain='.tradingview.com')
+        self.session.cookies.set('tv_ecuid', tv_ecuid, domain='.tradingview.com')
+        # temel header'lar
+        self.session.headers.update({
+            'Referer': 'https://www.tradingview.com',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        })
