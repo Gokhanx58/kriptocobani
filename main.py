@@ -23,10 +23,11 @@ async def run_signal_loop():
         for symbol in SYMBOLS:
             for interval in INTERVALS:
                 try:
-                    df = get_klines(symbol, interval, limit=BARS)
-                    if df.empty:
-                        logging.warning(f"{symbol}-{interval}: Veri yok")
-                        continue
+                        df = get_klines(symbol, interval, limit=BARS)
+    if df.empty:
+        logging.warning(f"{symbol}-{interval}: Veri yok veya hata.")
+        continue
+
 
                     signals = generate_signal(df)
                     if not signals:
