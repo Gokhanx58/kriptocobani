@@ -6,10 +6,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 def get_klines(symbol: str, interval: str, limit: int = 200) -> pd.DataFrame:
-    """
-    Binance Klines endpoint’inden OHLCV çeker.
-    interval: '1m', '5m', '1h', ... limit: bar sayısı
-    """
     url = "https://api.binance.com/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
     try:
@@ -18,10 +14,6 @@ def get_klines(symbol: str, interval: str, limit: int = 200) -> pd.DataFrame:
             logging.error(f"{symbol}-{interval}: Binance HTTP {resp.status_code} → {resp.text}")
             return pd.DataFrame()
         data = resp.json()
-        if not isinstance(data, list):
-            logging.error(f"{symbol}-{interval}: Binance hata cevabı → {data}")
-            return pd.DataFrame()
-        # DataFrame’e dönüştür
         df = pd.DataFrame(data, columns=[
             "open_time","open","high","low","close","volume",
             "close_time","quote_asset_vol","num_trades",
