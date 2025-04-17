@@ -1,15 +1,29 @@
 import pandas as pd
 import logging
 
-def detect_fvg_zones(df: pd.DataFrame):
+def detect_fvg_zones(df: pd.DataFrame, choch_signals, lookahead: int = 3):
     fvgs = []
-    for i in range(2, len(df)):
-        high_2, mid_low, low_0 = df.high.iat[i-2], df.low.iat[i-1], df.low.iat[i]
-        if mid_low > high_2:
-            fvgs.append((df.index[i], "FVG_DOWN", mid_low, high_2))
+    for ts, direction in choch_signals:
+        if ts not in df.index:
+            continue
+        idx = df.index.get_loc(ts)
+        window = df.iloc[idx+1:idx+1+lookahead]
+        if window.shape[0] < 2:
+            continue
+
+        # basit gap: önceki mumun high/low’u ile sonraki mumun low/high’u arasında boşluk
+        prev = window.iloc[0]
+        curr = window.iloc[1]
+
+        if direction == "CHoCH_UP":
+            # düşüş yönlü gap
+            if curr['low'] > prev['high']:
+                fvgs.append((window.index[1], "FVG_DOWN", prev['high'], curr['low']))
+
         else:
-            high_1 = df.high.iat[i-1]
-            if high_1 < low_0:
-                fvgs.append((df.index[i], "FVG_UP", low_0, high_1))
+            # yükseliş yönlü gap
+            if curr['high'] < prev['low']:
+                fvgs.append((window.index[1], "FVG_UP", curr['high'], prev['low']))
+
     logging.debug(f"FVG ZONES: {fvgs}")
     return fvgs
