@@ -1,4 +1,3 @@
-# order_block_detector.py
 import pandas as pd
 import logging
 
