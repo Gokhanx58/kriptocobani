@@ -7,8 +7,15 @@ from fvg_detector import detect_fvg_zones
 # CHoCH + OB + FVG uyumunu kontrol eder
 def generate_signal(df):
     try:
+        # CHoCH tespiti
         choch_list = detect_choch(df)
-        ob_list = detect_order_blocks(df)
+        if not choch_list:
+            return []
+
+        # OB tespiti -- CHoCH sinyallerini de parametre olarak alır
+        ob_list = detect_order_blocks(df, choch_list)
+        
+        # FVG tespiti
         fvg_list = detect_fvg_zones(df)
 
         logging.warning(f"CHOCH: {choch_list}")
