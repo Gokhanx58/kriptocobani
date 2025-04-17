@@ -5,31 +5,39 @@ def detect_choch(df: pd.DataFrame):
     choch_signals = []
     swing_high = None
     swing_low = None
+    swing_high_time = None
+    swing_low_time = None
 
     for i in range(3, len(df)):
         prev = df.iloc[i - 1]
         curr = df.iloc[i]
 
-        if df['high'].iloc[i-3:i].max() == prev['high']:
+        # Swing High
+        window_high = df['high'].iloc[i - 3:i]
+        if window_high.max() == prev['high']:
             swing_high = prev['high']
             swing_high_time = df.index[i - 1]
             logging.debug(f"Swing high: {swing_high} @ {swing_high_time}")
 
-        if df['low'].iloc[i-3:i].min() == prev['low']:
+        # Swing Low
+        window_low = df['low'].iloc[i - 3:i]
+        if window_low.min() == prev['low']:
             swing_low = prev['low']
             swing_low_time = df.index[i - 1]
             logging.debug(f"Swing low: {swing_low} @ {swing_low_time}")
 
-        if swing_high and curr['close'] > swing_high:
-            signal_time = df.index[i]
-            choch_signals.append((signal_time, 'CHoCH_UP'))
-            logging.info(f"CHoCH_UP @ {signal_time}")
+        # CHoCH up
+        if swing_high is not None and curr['close'] > swing_high:
+            ts = df.index[i]
+            choch_signals.append((ts, "CHoCH_UP"))
+            logging.info(f"CHoCH_UP @ {ts}")
             swing_high = swing_low = None
 
-        elif swing_low and curr['close'] < swing_low:
-            signal_time = df.index[i]
-            choch_signals.append((signal_time, 'CHoCH_DOWN'))
-            logging.info(f"CHoCH_DOWN @ {signal_time}")
+        # CHoCH down
+        elif swing_low is not None and curr['close'] < swing_low:
+            ts = df.index[i]
+            choch_signals.append((ts, "CHoCH_DOWN"))
+            logging.info(f"CHoCH_DOWN @ {ts}")
             swing_high = swing_low = None
 
     return choch_signals
