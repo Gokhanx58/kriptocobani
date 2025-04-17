@@ -4,28 +4,17 @@ from order_block_detector import detect_order_blocks
 from fvg_detector import detect_fvg_zones
 
 def analyze(df):
-    choch_list = detect_choch(df)
-    order_blocks = detect_order_blocks(df, choch_list)
-    fvg_zones = detect_fvg_zones(df, choch_list)
+    choch = detect_choch(df)
+    ob = detect_order_blocks(df, choch)
+    fvg = detect_fvg_zones(df)
 
-    final_signals = []
+    final = []
+    for ts, d in choch:
+        if any(o[0]==ts for o in ob) and any(f[0]==ts for f in fvg):
+            final.append((ts, "AL" if d=="CHoCH_UP" else "SAT"))
 
-    for time, choch_type in choch_list:
-        # Aynı timestamp’li OB ve FVG olup olmadığını kontrol et
-        ob_matches = [ob for ob in order_blocks if ob[0] == time]
-        fvg_matches = [fvg for fvg in fvg_zones if fvg[0] == time]
-
-        if ob_matches and fvg_matches:
-            if choch_type == "CHoCH_UP":
-                final_signals.append((time, "AL"))
-            elif choch_type == "CHoCH_DOWN":
-                final_signals.append((time, "SAT"))
-
-    # Loglama (debug için)
-    logging.warning(f"CHOCH: {choch_list}")
-    logging.warning(f"ORDER BLOCKS: {order_blocks}")
-    logging.warning(f"FVG ZONES: {fvg_zones}")
-    logging.warning(f"FINAL SIGNALS: {final_signals}")
-    logging.warning("====================")
-
-    return final_signals
+    logging.debug(f"CHOCH: {choch}")
+    logging.debug(f"OB:    {ob}")
+    logging.debug(f"FVG:   {fvg}")
+    logging.info(f"FINAL: {final}\n{'='*20}")
+    return final
