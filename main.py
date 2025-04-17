@@ -1,25 +1,18 @@
+# main.py
 import asyncio
 import logging
 from tvdatafeed import TvDatafeed, Interval
 from signal_generator import generate_signal
 import telegram
 
-# Telegram ayarları
-BOT_TOKEN = '7677308602:AAHH7vloPaQ7PqgFdBnJ2DKYy6sjJ5iqaYE'
-CHANNEL_ID = '@GokriptoHan'
-bot = telegram.Bot(token=BOT_TOKEN)
+from config import TELEGRAM_TOKEN, TELEGRAM_CHANNEL, SYMBOLS, INTERVALS, BARS
 
-# TradingView login
+# Telegram bot
+bot = telegram.Bot(token=TELEGRAM_TOKEN)
+
+# TradingView oturumu
 tv = TvDatafeed(username='marsticaret1', password='8690Yn678690')
 
-# Semboller ve zaman dilimleri
-SYMBOLS = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'AVAXUSDT', 'SUIUSDT']
-INTERVALS = [Interval.MIN_1, Interval.MIN_5]
-
-# Bar sayısı
-BARS = 200
-
-# Son gönderilen sinyaller
 last_signals = {}
 
 async def run_signal_loop():
@@ -41,14 +34,14 @@ async def run_signal_loop():
                     key = f"{symbol}_{interval.value}"
                     if last_signals.get(key) != sig:
                         last_signals[key] = sig
-                        message = (
+                        mesaj = (
                             f"📊 *Sinyal Geldi!*\n"
                             f"*Sembol:* `{symbol}`\n"
                             f"*Zaman Dilimi:* `{interval.value}`\n"
                             f"*Sinyal:* `{sig}`\n"
                             f"🕒 {ts.strftime('%Y-%m-%d %H:%M')}"
                         )
-                        await bot.send_message(chat_id=CHANNEL_ID, text=message, parse_mode="Markdown")
+                        await bot.send_message(chat_id=TELEGRAM_CHANNEL, text=mesaj, parse_mode="Markdown")
                 except Exception as e:
                     logging.error(f"{symbol}-{interval.value}: HATA → {e}")
         await asyncio.sleep(60)
