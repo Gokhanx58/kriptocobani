@@ -1,3 +1,8 @@
 python-telegram-bot==20.3
 pandas==1.5.3
 numpy==1.24.4
+ta==0.10.2
+httpx==0.24.1
+requests==2.32.3
+nest_asyncio==1.6.0
+websocket-client==1.8.0
