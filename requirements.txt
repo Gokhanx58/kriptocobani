@@ -1,4 +1,3 @@
-tvdatafeed==1.1.3
 python-telegram-bot==20.3
 pandas==1.5.3
 numpy==1.24.4
