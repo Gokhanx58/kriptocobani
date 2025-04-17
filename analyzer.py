@@ -5,16 +5,21 @@ from fvg_detector import detect_fvg_zones
 
 def analyze(df):
     choch = detect_choch(df)
-    ob = detect_order_blocks(df, choch)
-    fvg = detect_fvg_zones(df)
+    if not choch:
+        return []
 
-    final = []
-    for ts, d in choch:
-        if any(o[0]==ts for o in ob) and any(f[0]==ts for f in fvg):
-            final.append((ts, "AL" if d=="CHoCH_UP" else "SAT"))
+    obs  = detect_order_blocks(df, choch)
+    fvgs = detect_fvg_zones(df, choch)
 
-    logging.debug(f"CHOCH: {choch}")
-    logging.debug(f"OB:    {ob}")
-    logging.debug(f"FVG:   {fvg}")
-    logging.info(f"FINAL: {final}\n{'='*20}")
-    return final
+    signals = []
+    for ts, direction in choch:
+        ob_ok  = any(abs((ts - o[0]).total_seconds()) <= 180 for o in obs)
+        fvg_ok = any(abs((ts - f[0]).total_seconds()) <= 180 for f in fvgs)
+        if ob_ok and fvg_ok:
+            # güçlülük: OB ve FVG çakıştığı mum hacmine veya gap büyüklüğüne bakıp ekleyebilirsiniz.
+            strength = ""  # ya da "GÜÇLÜ " mantığı eklenebilir
+            sig = f"{strength}AL" if direction=="CHoCH_UP" else f"{strength}SAT"
+            signals.append((ts, sig))
+
+    logging.info(f"FINAL SIGNALS: {signals}")
+    return signals
