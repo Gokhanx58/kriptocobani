@@ -1,37 +1,25 @@
 import logging
-from choch_detector import detect_choch
+from choch_detector        import detect_choch
 from order_block_detector import detect_order_blocks
-from fvg_detector import detect_fvg_zones
+from fvg_detector         import detect_fvg_zones
 
-# Ana sinyal üretme fonksiyonu
-# CHoCH + OB + FVG uyumunu kontrol eder
 def generate_signal(df):
     try:
-        # CHoCH tespiti
-        choch_list = detect_choch(df)
-        if not choch_list:
-            return []
+        choch = detect_choch(df)
+        if not choch: return []
 
-        # OB tespiti -- CHoCH sinyallerini de parametre olarak alır
-        ob_list = detect_order_blocks(df, choch_list)
-        
-        # FVG tespiti
-        fvg_list = detect_fvg_zones(df)
+        obs = detect_order_blocks(df, choch)
+        fvg = detect_fvg_zones(df)
 
-        logging.warning(f"CHOCH: {choch_list}")
-        logging.warning(f"ORDER BLOCKS: {ob_list}")
-        logging.warning(f"FVG ZONES: {fvg_list}")
-
-        final_signals = []
-        for ts, dir in choch_list:
-            # OB ve FVG, CHoCH zamanından 3dk içinde olmalı
-            ob_ok = any(abs((ts - ob[0]).total_seconds()) <= 180 for ob in ob_list)
-            fvg_ok = any(abs((ts - fvg[0]).total_seconds()) <= 180 for fvg in fvg_list)
+        final = []
+        for ts, dir in choch:
+            ob_ok  = any(abs((ts - o[0]).total_seconds()) <= 180 for o in obs)
+            fvg_ok = any(abs((ts - f[0]).total_seconds()) <= 180 for f in fvg)
             if ob_ok and fvg_ok:
-                sig = 'AL' if dir == 'CHoCH_UP' else 'SAT'
-                final_signals.append((ts, sig))
-        logging.warning(f"FINAL SIGNALS: {final_signals}")
-        return final_signals
+                final.append((ts, 'AL' if dir=='CHoCH_UP' else 'SAT'))
+
+        logging.warning(f"FINAL SIGNALS: {final}")
+        return final
     except Exception as e:
         logging.error(f"Sinyal üretiminde hata: {e}")
         return []
