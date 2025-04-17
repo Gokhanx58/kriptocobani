@@ -1,3 +1,5 @@
+from tvdatafeed.interval import Interval
+
 TELEGRAM_TOKEN   = "7677308602:AAHH7vloPaQ7PqgFdBnJ2DKYy6sjJ5iqaYE"
 TELEGRAM_CHANNEL = "@GokriptoHan"
 
