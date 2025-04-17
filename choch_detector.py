@@ -1,42 +1,25 @@
+# choch_detector.py
 import pandas as pd
 
 def detect_choch(df: pd.DataFrame):
-    """
-    CHoCH (Change of Character) tespiti yapar.
-    Fiyatın önceki swing high/low seviyelerine göre yön değiştirdiği noktaları bulur.
-
-    :param df: OHLCV içeren DataFrame (timestamp index'li)
-    :return: CHoCH sinyalleri listesi: [(timestamp, 'CHoCH_UP' | 'CHoCH_DOWN')]
-    """
-
     choch_signals = []
-    swing_high = None
-    swing_low = None
+    swing_high = swing_low = None
 
     for i in range(3, len(df)):
-        prev = df.iloc[i - 1]
-        curr = df.iloc[i]
+        prev = df.iloc[i-1]; curr = df.iloc[i]
+        highs = df['high'].iloc[i-3:i]
+        lows  = df['low'].iloc[i-3:i]
 
-        # Swing High tespiti: önceki 3 barın en yükseği
-        if df['high'].iloc[i - 3:i].max() == prev['high']:
+        if prev['high'] == highs.max():
             swing_high = prev['high']
-            swing_high_time = df.index[i - 1]
-
-        # Swing Low tespiti: önceki 3 barın en düşüğü
-        if df['low'].iloc[i - 3:i].min() == prev['low']:
+        if prev['low']  == lows.min():
             swing_low = prev['low']
-            swing_low_time = df.index[i - 1]
 
-        # CHoCH_UP: fiyat swing high seviyesini kırdıysa
         if swing_high and curr['close'] > swing_high:
             choch_signals.append((df.index[i], 'CHoCH_UP'))
-            swing_high = None  # reset
-            swing_low = None
-
-        # CHoCH_DOWN: fiyat swing low seviyesini kırdıysa
+            swing_high = swing_low = None
         elif swing_low and curr['close'] < swing_low:
             choch_signals.append((df.index[i], 'CHoCH_DOWN'))
-            swing_low = None  # reset
-            swing_high = None
+            swing_low = swing_high = None
 
     return choch_signals
